@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       decodedToken = verifyAuthToken(token) as JwtPayload; // Ép kiểu ở đây
     } catch (authError) {
-      console.error('Lỗi xác thực token khi lấy user list:', authError);
+      console.error('Lỗi xác thực token:', authError);
       return res.status(401).json({ message: 'Token không hợp lệ hoặc hết hạn.' });
     }
 
@@ -31,11 +31,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 2. Kết nối DB và lấy danh sách người dùng (không bao gồm password_hash)
     const client = await pool.connect();
-    const result = await client.query('SELECT id, email, role, created_at, updated_at FROM users ORDER BY created_at DESC');
-    const users = result.rows;
-    client.release();
-
-    return res.status(200).json({ users });
+    try {
+      const result = await client.query(`
+        SELECT 
+          id, email, role, full_name, phone_number, address, date_of_birth, created_at, updated_at 
+        FROM users 
+        ORDER BY created_at DESC
+      `);
+      
+      return res.status(200).json({ users: result.rows });
+    } finally {
+      client.release();
+    }
 
   } catch (error) {
     console.error('Lỗi khi lấy danh sách người dùng:', error);
