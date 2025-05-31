@@ -4,7 +4,7 @@ import clsx from 'clsx';
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline';
   size?: 'sm' | 'md' | 'lg';
-  children: ReactNode;
+  children?: ReactNode;
   startIcon?: ReactNode;
 }
 

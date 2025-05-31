@@ -1,78 +1,69 @@
-// src/pages/api/auth/login.ts
+// E:\chat_bot\src\pages\api\auth\login.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import pool from '../../../../lib/db';
-import { comparePassword, generateAuthToken } from '../../../../lib/auth';
-import { serialize } from 'cookie'; // Import the 'cookie' library to set cookies
+import pool from '../../../../lib/db'; // Đảm bảo đường dẫn đúng
+import { comparePassword, generateAuthToken } from '../../../../lib/auth'; // Đảm bảo đường dẫn đúng
+import { serialize } from 'cookie'; // Dùng để đặt HttpOnly cookie
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    console.log('API Login: Phương thức không được phép');
     return res.status(405).json({ message: 'Chỉ chấp nhận phương thức POST' });
   }
 
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email và mật khẩu là bắt buộc.' });
+  }
+
+  const client = await pool.connect();
+
   try {
-    const { email, password } = req.body;
-    console.log(`API Login: Đang cố gắng đăng nhập cho email: ${email}`);
-
-    if (!email || !password) {
-      console.log('API Login: Thiếu email hoặc mật khẩu');
-      return res.status(400).json({ message: 'Email và mật khẩu là bắt buộc' });
-    }
-
-    const client = await pool.connect();
-    console.log('API Login: Đã kết nối đến DB.');
-    const result = await client.query('SELECT id, email, password_hash, role FROM users WHERE email = $1', [email]);
-    const user = result.rows[0];
-    client.release();
-    console.log('API Login: Kết nối DB đã được giải phóng.');
+    // 1. Tìm người dùng theo email
+    const userResult = await client.query('SELECT id, email, password_hash, role FROM users WHERE email = $1', [email]);
+    const user = userResult.rows[0];
 
     if (!user) {
-      console.log('API Login: Người dùng không tìm thấy');
-      return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
+      return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng.' });
     }
 
+    // 2. So sánh mật khẩu
     const isPasswordValid = await comparePassword(password, user.password_hash);
-    console.log(`API Login: Mật khẩu hợp lệ: ${isPasswordValid}`);
-
     if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
+      return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng.' });
     }
 
+    // 3. Tạo JWT token
     const token = generateAuthToken(user.id, user.role);
-    console.log('API Login: Token đã được tạo.');
 
-    // -----------------------------------------------------------
-    // THE CRUCIAL CHANGE: Set the token as an HTTP-only cookie
-    // -----------------------------------------------------------
-    res.setHeader(
-      'Set-Cookie',
-      serialize('token', token, {
-        httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
-        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (HTTPS)
-        sameSite: 'strict', // Protects against CSRF attacks
-        maxAge: 60 * 60, // 1 hour (matches JWT expiry)
-        path: '/', // Make the cookie available across the entire domain
-      })
-    );
+    // 4. Đặt token vào HttpOnly cookie
+    // HttpOnly: Ngăn JavaScript truy cập cookie, tăng cường bảo mật XSS
+    // Secure: Chỉ gửi qua HTTPS (quan trọng cho môi trường production)
+    // SameSite: 'Lax' hoặc 'Strict' để chống CSRF (tùy thuộc vào yêu cầu)
+    const cookie = serialize('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // true nếu là HTTPS, false nếu là HTTP (dev)
+      path: '/', // Cookie khả dụng trên toàn bộ ứng dụng
+      maxAge: 60 * 60 * 24 * 7, // 1 tuần (thời gian sống của cookie)
+      sameSite: 'lax', // Hoặc 'strict'
+    });
 
-    // -----------------------------------------------------------
+    res.setHeader('Set-Cookie', cookie);
 
+    // 5. Trả về thông tin người dùng (không chứa mật khẩu)
     return res.status(200).json({
-      message: 'Đăng nhập thành công',
-      // You can still send the token in the body if your frontend needs to read it directly,
-      // but for getServerSideProps, setting it as a cookie is key.
-      // For security, it's generally better to *only* send it as an httpOnly cookie
-      // if the client doesn't explicitly need it in JS.
-      // token, // Consider removing this if client doesn't need it for security
+      message: 'Đăng nhập thành công!',
       user: {
         id: user.id,
         email: user.email,
         role: user.role,
+        // Không trả về password_hash
       },
     });
 
   } catch (error) {
-    console.error('API Login: Lỗi máy chủ nội bộ:', error);
-    return res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+    console.error('Lỗi khi đăng nhập:', error);
+    return res.status(500).json({ message: 'Lỗi máy chủ nội bộ trong quá trình đăng nhập.' });
+  } finally {
+    client.release(); // Giải phóng kết nối database
   }
 }

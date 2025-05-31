@@ -11,13 +11,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Mail, Lock, GraduationCap, AlertCircle } from "lucide-react"
 
-interface UserData {
-  id: string
-  email: string
-  role: string
-  firstName?: string
-  lastName?: string
-}
+// Interface này không cần thiết nếu bạn không dùng thông tin user từ localStorage
+// Vì chúng ta sẽ dựa vào vai trò từ API response và cookie
+// interface UserData {
+//   id: string
+//   email: string
+//   role: string
+//   firstName?: string
+//   lastName?: string
+// }
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -44,27 +46,32 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.message || "Đăng nhập thất bại")
-        return
+        // Log lỗi từ server để dễ debug
+        console.error("Login API response error:", data);
+        setError(data.message || "Đăng nhập thất bại");
+        return;
       }
 
-      localStorage.setItem("authToken", data.token)
-      localStorage.setItem("userRole", data.user.role)
+      // *** SỬA ĐỔI TẠI ĐÂY ***
+      // Token đã được đặt vào HttpOnly cookie bởi server, không cần lưu vào localStorage nữa.
+      // localStorage.setItem("authToken", data.token); // XÓA DÒNG NÀY
+      // localStorage.setItem("userRole", data.user.role); // XÓA DÒNG NÀY (sẽ đọc vai trò từ cookie hoặc từ API khi cần)
 
+      // Chuyển hướng dựa trên vai trò
       if (data.user.role === "TRUONGBAN") {
-        router.push("/dashboard/truongban")
-      } else if (data.user.role === "GIANGVIEN") {
-        router.push("/dashboard/giangvien")
+        router.push("/dashboard"); // Sửa thành /dashboard thay vì /dashboard/truongban
+      } else if (data.user.role === "GIAOVIEN") {
+        router.push("/dashboard/giaovien");
       } else {
-        router.push("/")
+        router.push("/");
       }
     } catch (err) {
-      console.error("Lỗi mạng hoặc server:", err)
-      setError("Không thể kết nối đến máy chủ.")
+      console.error("Lỗi mạng hoặc server:", err);
+      setError("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center p-4">

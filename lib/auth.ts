@@ -5,13 +5,14 @@ import bcrypt from 'bcryptjs'; // Cần cài đặt bcryptjs
 const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_if_not_in_env';
 const SALT_ROUNDS = 10; // Số vòng lặp để hash mật khẩu, càng cao càng an toàn nhưng chậm hơn
 
-interface DecodedToken {
+export interface DecodedToken {
+  userId: any;
+  email: any;
   id: string;
   role: string;
-  iat: number;
-  exp: number;
+  iat: number; // Issued At
+  exp: number; // Expiration
 }
-
 export function generateAuthToken(userId: string, role: string): string {
   return jwt.sign({ id: userId, role: role }, JWT_SECRET, { expiresIn: '1h' });
 }
