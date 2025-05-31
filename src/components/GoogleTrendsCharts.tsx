@@ -14,6 +14,7 @@ declare global {
 
 export default function GoogleTrendsCharts() {
   const [isLoading, setIsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState("university") // State to track active tab
 
   useEffect(() => {
     const script = document.createElement("script")
@@ -23,14 +24,62 @@ export default function GoogleTrendsCharts() {
 
     script.onload = () => {
       setIsLoading(false)
-      // @ts-ignore
-      if (typeof window.trends !== "undefined") {
-        const commonOptions = {
-          width: "100%",
-          height: 300,
-        }
+    }
 
-        const widgets = [
+    script.onerror = () => {
+      setIsLoading(false)
+      console.error("Failed to load Google Trends script")
+    }
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
+    }
+  }, []) // Empty dependency array means this runs once on mount
+
+  // Function to render Google Trends widgets
+  const renderTrendsWidgets = (widgets: any[]) => {
+    // @ts-ignore
+    if (typeof window.trends !== "undefined") {
+      const commonOptions = {
+        width: "100%",
+        height: 300,
+      }
+
+      // Delay rendering to ensure DOM is ready
+      setTimeout(() => {
+        widgets.forEach((widget) => {
+          const container = document.getElementById(widget.id)
+          if (container) {
+            // Clear existing content to prevent duplicates if re-rendering
+            container.innerHTML = ""
+            // @ts-ignore
+            window.trends.embed.renderExploreWidgetTo(
+              container,
+              widget.type,
+              {
+                comparisonItem: [{ keyword: widget.keyword, geo: widget.geo, time: widget.time }],
+                category: widget.category,
+                property: "",
+              },
+              {
+                ...commonOptions,
+                exploreQuery: widget.query,
+                guestPath: "https://trends.google.com:443/trends/embed/",
+              },
+            )
+          }
+        })
+      }, 100) // Small delay to ensure DOM update
+    }
+  }
+
+  // Effect to re-render widgets when activeTab changes
+  useEffect(() => {
+    if (!isLoading) {
+      if (activeTab === "university") {
+        renderTrendsWidgets([
           {
             id: "widget1",
             type: "TIMESERIES",
@@ -58,6 +107,9 @@ export default function GoogleTrendsCharts() {
             category: 958,
             query: "cat=958&date=today%203-m&geo=VN&q=đại%20học&hl=vi",
           },
+        ])
+      } else if (activeTab === "utc2") {
+        renderTrendsWidgets([
           {
             id: "widget4",
             type: "TIMESERIES",
@@ -85,45 +137,10 @@ export default function GoogleTrendsCharts() {
             category: 0,
             query: "date=today%203-m&geo=VN&q=utc2&hl=vi",
           },
-        ]
-
-        // Delay rendering to ensure DOM is ready
-        setTimeout(() => {
-          widgets.forEach((widget) => {
-            const container = document.getElementById(widget.id)
-            if (container) {
-              // @ts-ignore
-              window.trends.embed.renderExploreWidgetTo(
-                container,
-                widget.type,
-                {
-                  comparisonItem: [{ keyword: widget.keyword, geo: widget.geo, time: widget.time }],
-                  category: widget.category,
-                  property: "",
-                },
-                {
-                  ...commonOptions,
-                  exploreQuery: widget.query,
-                  guestPath: "https://trends.google.com:443/trends/embed/",
-                },
-              )
-            }
-          })
-        }, 500)
+        ])
       }
     }
-
-    script.onerror = () => {
-      setIsLoading(false)
-      console.error("Failed to load Google Trends script")
-    }
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script)
-      }
-    }
-  }, [])
+  }, [activeTab, isLoading]) // Rerun when activeTab or isLoading changes
 
   if (isLoading) {
     return (
@@ -146,7 +163,7 @@ export default function GoogleTrendsCharts() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="university" className="w-full">
+      <Tabs defaultValue="university" onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="university" className="flex items-center space-x-2">
             <GraduationCap className="w-4 h-4" />
