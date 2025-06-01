@@ -103,13 +103,19 @@ export default function EnrollmentPlansManagement() {
       console.error('Error adding plan:', err);
     }
   };
-
   const handleEditPlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPlan) return;
 
     try {
-      const response = await fetch(`/api/enrollment-plans/${selectedPlan.id}`, {
+      // Validate dates
+      const startDate = new Date(selectedPlan.start_date);
+      const endDate = new Date(selectedPlan.end_date);
+      
+      if (endDate <= startDate) {
+        setError('Ngày kết thúc phải sau ngày bắt đầu');
+        return;
+      }      const response = await fetch(`/api/enrollment-plans/${selectedPlan.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -118,21 +124,22 @@ export default function EnrollmentPlansManagement() {
         body: JSON.stringify({
           name: selectedPlan.name,
           description: selectedPlan.description,
-          start_date: selectedPlan.start_date,
-          end_date: selectedPlan.end_date,
+          start_date: selectedPlan.start_date.split('T')[0], // Chỉ lấy phần ngày
+          end_date: selectedPlan.end_date.split('T')[0], // Chỉ lấy phần ngày
         }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update plan');
+        throw new Error(data.message || 'Failed to update plan');
       }
 
       await fetchPlans();
       setIsEditPlanOpen(false);
       setSelectedPlan(null);
-    } catch (err) {
-      setError('Không thể cập nhật kế hoạch');
+      setError(''); // Clear any existing errors
+    } catch (err: any) {
+      setError(err.message || 'Không thể cập nhật kế hoạch');
       console.error('Error updating plan:', err);
     }
   };
@@ -142,8 +149,7 @@ export default function EnrollmentPlansManagement() {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/enrollment-plans/${planId}`, {
+    try {      const response = await fetch(`/api/enrollment-plans/${planId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -330,8 +336,10 @@ export default function EnrollmentPlansManagement() {
               </div>
               <div className="space-y-2">
                 <label htmlFor="edit-description">Mô tả</label>
-                <Input
+                <textarea
                   id="edit-description"
+                  className="w-full border rounded-md p-2"
+                  rows={3}
                   value={selectedPlan?.description || ''}
                   onChange={(e) =>
                     setSelectedPlan(prev =>
@@ -346,7 +354,7 @@ export default function EnrollmentPlansManagement() {
                 <Input
                   id="edit-start-date"
                   type="date"
-                  value={selectedPlan?.start_date.split('T')[0] || ''}
+                  value={selectedPlan?.start_date?.split('T')[0] || ''}
                   onChange={(e) =>
                     setSelectedPlan(prev =>
                       prev ? { ...prev, start_date: e.target.value } : null
@@ -360,7 +368,7 @@ export default function EnrollmentPlansManagement() {
                 <Input
                   id="edit-end-date"
                   type="date"
-                  value={selectedPlan?.end_date.split('T')[0] || ''}
+                  value={selectedPlan?.end_date?.split('T')[0] || ''}
                   onChange={(e) =>
                     setSelectedPlan(prev =>
                       prev ? { ...prev, end_date: e.target.value } : null
@@ -370,7 +378,11 @@ export default function EnrollmentPlansManagement() {
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsEditPlanOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => {
+                  setIsEditPlanOpen(false);
+                  setSelectedPlan(null);
+                  setError('');
+                }}>
                   Hủy
                 </Button>
                 <Button type="submit">Lưu thay đổi</Button>
@@ -381,4 +393,4 @@ export default function EnrollmentPlansManagement() {
       </div>
     </>
   );
-} 
+}

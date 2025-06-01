@@ -44,7 +44,7 @@ export default function GoogleTrendsCharts() {
     if (typeof window.trends !== "undefined") {
       const commonOptions = {
         width: "100%",
-        height: 300,
+        height: 400,
       }
 
       // Delay rendering to ensure DOM is ready
@@ -152,7 +152,7 @@ export default function GoogleTrendsCharts() {
                 <div className="h-4 bg-muted rounded animate-pulse" />
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] bg-muted rounded animate-pulse" />
+                <div className="h-[400px] bg-muted rounded animate-pulse" />
               </CardContent>
             </Card>
           ))}
@@ -186,7 +186,7 @@ export default function GoogleTrendsCharts() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div id="widget1" className="w-full h-[300px] overflow-hidden rounded-lg" />
+                <div id="widget1" className="w-full h-[400px] overflow-hidden rounded-lg" />
               </CardContent>
             </Card>
 
@@ -199,7 +199,7 @@ export default function GoogleTrendsCharts() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div id="widget2" className="w-full h-[300px] overflow-hidden rounded-lg" />
+                <div id="widget2" className="w-full h-[400px] overflow-hidden rounded-lg" />
               </CardContent>
             </Card>
           </div>

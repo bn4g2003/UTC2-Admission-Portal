@@ -84,14 +84,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         if (endDate <= startDate) {
           return res.status(400).json({ message: 'Ngày kết thúc phải sau ngày bắt đầu.' });
-        }
-
-        // Update plan
+        }        // Update plan
         const updatedPlan = await client.query(`
           UPDATE enrollment_plans
-          SET name = $1, description = $2, start_date = $3, end_date = $4, updated_at = CURRENT_TIMESTAMP
+          SET plan_name = $1, description = $2, start_date = $3, end_date = $4, updated_at = CURRENT_TIMESTAMP
           WHERE id = $5
-          RETURNING *
+          RETURNING id, plan_name as name, description, start_date, end_date, created_by, created_at, updated_at
         `, [name, description, start_date, end_date, id]);
 
         if (updatedPlan.rows.length === 0) {

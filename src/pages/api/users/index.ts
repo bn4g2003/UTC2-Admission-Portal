@@ -33,14 +33,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           FROM users
           ORDER BY created_at DESC
         `);
-        return res.status(200).json(result.rows);
-
-      case 'POST':
-        const { email, password, full_name, role, phone_number, address, date_of_birth } = req.body;
+        return res.status(200).json(result.rows);      case 'POST':
+        const { email, password, full_name, role, phone_number = null, address = null, date_of_birth = null } = req.body;
 
         // Validate required fields
         if (!email || !password || !role) {
           return res.status(400).json({ message: 'Email, mật khẩu và vai trò là bắt buộc.' });
+        }
+
+        if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+          return res.status(400).json({ message: 'Email không hợp lệ.' });
+        }
+
+        if (password.length < 6) {
+          return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự.' });
         }
 
         // Check if email already exists
@@ -50,17 +56,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Hash password
-        const hashedPassword = await hashPassword(password);
-
-        // Insert new user
+        const hashedPassword = await hashPassword(password);        // Insert new user
         const newUser = await client.query(`
           INSERT INTO users (
             email, password_hash, role, full_name, 
-            phone_number, address, date_of_birth
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            phone_number, address, date_of_birth,
+            created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
           RETURNING id, email, role, full_name, phone_number, 
                     address, date_of_birth, created_at, updated_at
-        `, [email, hashedPassword, role, full_name, phone_number, address, date_of_birth]);
+        `, [email, hashedPassword, role, full_name || null, phone_number, address, date_of_birth]);
 
         return res.status(201).json({
           message: 'Người dùng đã được tạo thành công.',
