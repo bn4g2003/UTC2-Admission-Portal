@@ -106,6 +106,7 @@ CREATE TABLE reports (
     assignment_id UUID NOT NULL,                    -- ID của nhiệm vụ mà báo cáo này liên quan
     reported_by UUID NOT NULL,                      -- ID của GIAOVIEN đã gửi báo cáo
     report_content TEXT NOT NULL,                   -- Nội dung chi tiết của báo cáo
+    has_documents BOOLEAN DEFAULT FALSE,
     submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Thời gian gửi báo cáo
     status VARCHAR(50) DEFAULT 'submitted' NOT NULL, -- Trạng thái báo cáo: 'submitted', 'reviewed', 'rejected'
     reviewed_by UUID,                               -- ID của TRUONGBAN đã duyệt báo cáo (có thể NULL nếu chưa duyệt)
@@ -114,6 +115,14 @@ CREATE TABLE reports (
     CONSTRAINT fk_report_assignment_id FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE RESTRICT,
     CONSTRAINT fk_report_reported_by FOREIGN KEY (reported_by) REFERENCES users(id) ON DELETE RESTRICT,
     CONSTRAINT fk_report_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL -- Nếu TRUONGBAN duyệt bị xóa, trường này thành NULL
+);
+
+CREATE TABLE report_documents (
+    report_id UUID NOT NULL,            -- ID của báo cáo
+    document_id UUID NOT NULL,          -- ID của tài liệu
+    PRIMARY KEY (report_id, document_id), -- Khóa chính kép
+    CONSTRAINT fk_rd_report_id FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE,     -- Nếu báo cáo bị xóa, liên kết này cũng bị xóa
+    CONSTRAINT fk_rd_document_id FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE RESTRICT -- Nếu tài liệu bị xóa (không nên xảy ra khi đang liên kết), hãy hạn chế
 );
 
 ---
