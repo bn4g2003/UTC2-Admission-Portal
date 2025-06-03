@@ -61,7 +61,7 @@ export default function LoginPage() {
       if (data.user.role === "TRUONGBAN") {
         router.push("/dashboard"); // Sửa thành /dashboard thay vì /dashboard/truongban
       } else if (data.user.role === "GIAOVIEN") {
-        router.push("/dashboard/giaovien");
+        router.push("/teacherdashboard");
       } else {
         router.push("/");
       }

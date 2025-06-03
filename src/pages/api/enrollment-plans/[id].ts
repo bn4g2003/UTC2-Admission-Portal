@@ -30,47 +30,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     switch (req.method) {
-      case 'GET':
-        // Get plan details with stages
+      case 'GET':        // Get plan details with stages
         const plan = await client.query(`
           SELECT 
             ep.id,
-            ep.name,
+            ep.plan_name as name,
             ep.description,
             ep.start_date,
             ep.end_date,
             ep.created_by,
             ep.created_at,
             ep.updated_at,
-            u.email as created_by_email,
             CASE 
               WHEN CURRENT_DATE < ep.start_date THEN 'upcoming'
               WHEN CURRENT_DATE > ep.end_date THEN 'completed'
               ELSE 'ongoing'
-            END as status
+            END as status,
+            (SELECT COUNT(*) FROM enrollment_stages WHERE plan_id = ep.id) as stages_count
           FROM enrollment_plans ep
-          LEFT JOIN users u ON ep.created_by = u.id
           WHERE ep.id = $1
         `, [id]);
 
         if (plan.rows.length === 0) {
           return res.status(404).json({ message: 'Không tìm thấy kế hoạch.' });
-        }
-
-        // Get stages
+        }        // Get stages
         const stages = await client.query(`
-          SELECT id, name, description, start_date, end_date, order_number
+          SELECT 
+            id, stage_name as name, stage_description as description, 
+            start_time, end_time, stage_order,
+            created_at, updated_at
           FROM enrollment_stages
           WHERE plan_id = $1
-          ORDER BY order_number ASC
+          ORDER BY stage_order ASC
         `, [id]);
 
         return res.status(200).json({
           ...plan.rows[0],
           stages: stages.rows
-        });
-
-      case 'PUT':
+        });      case 'PUT':
         const { name, description, start_date, end_date } = req.body;
 
         // Validate required fields
@@ -84,12 +81,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         if (endDate <= startDate) {
           return res.status(400).json({ message: 'Ngày kết thúc phải sau ngày bắt đầu.' });
-        }        // Update plan
+        }
+
+        // Update plan
         const updatedPlan = await client.query(`
           UPDATE enrollment_plans
           SET plan_name = $1, description = $2, start_date = $3, end_date = $4, updated_at = CURRENT_TIMESTAMP
           WHERE id = $5
-          RETURNING id, plan_name as name, description, start_date, end_date, created_by, created_at, updated_at
+          RETURNING 
+            id, 
+            plan_name as name, 
+            description, 
+            start_date, 
+            end_date, 
+            created_by, 
+            created_at, 
+            updated_at,
+            (SELECT COUNT(*) FROM enrollment_stages WHERE plan_id = id) as stages_count
         `, [name, description, start_date, end_date, id]);
 
         if (updatedPlan.rows.length === 0) {

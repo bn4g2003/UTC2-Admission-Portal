@@ -104,7 +104,7 @@ function AppSidebar() {
 
   const handleLogout = () => {
     // Add logout logic here
-    router.push("/login")
+    router.push("/auth/login")
   }
 
   const handleSettings = () => {

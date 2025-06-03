@@ -127,9 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({
           message: 'Cập nhật thông tin người dùng thành công.',
           user: updatedUser.rows[0]
-        });
-
-      case 'DELETE':
+        });      case 'DELETE':
         // Check if user exists
         const userToDelete = await client.query(
           'SELECT role FROM users WHERE id = $1',
@@ -152,10 +150,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
-        await client.query('DELETE FROM users WHERE id = $1', [id]);
-        return res.status(200).json({
-          message: 'Xóa người dùng thành công.'
-        });
+        // Begin transaction
+        await client.query('BEGIN');
+
+        try {          // Xóa tất cả assignments của user này
+          await client.query('DELETE FROM assignments WHERE assigned_to = $1', [id]);
+          
+          // Sau đó xóa user
+          await client.query('DELETE FROM users WHERE id = $1', [id]);
+          
+          await client.query('COMMIT');
+          
+          return res.status(200).json({
+            message: 'Xóa người dùng thành công.'
+          });
+        } catch (error) {
+          await client.query('ROLLBACK');
+          throw error;
+        }
 
       default:
         res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);

@@ -1,25 +1,35 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { verifyAuthToken } from '../../../../lib/auth';
+import type { NextApiResponse } from 'next';
+import { withAuth, AuthenticatedRequest } from '../../../../lib/auth';
+import pool from '../../../../lib/db';
+import error from 'next/error';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const token = req.cookies.token;
-  
-  if (!token) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
+  const client = await pool.connect();
+    try {
+    // Get user details from database
+    const result = await client.query(
+      'SELECT id, email, role, full_name FROM users WHERE id = $1',
+      [req.user.id]
+    );
 
-  try {
-    const decodedToken = verifyAuthToken(token);
+    const user = result.rows[0];
+
     return res.status(200).json({
-      email: decodedToken.email,
-      role: decodedToken.role
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      full_name: user.full_name
     });
   } catch (error) {
+    console.error('Auth check error:', error);
+    return res.status(401).json({ message: 'Không thể xác thực người dùng' });
+  } finally {
+    client.release();
     console.error('Token verification failed:', error);
     return res.status(401).json({ message: 'Invalid token' });
   }
-} 
+} )
