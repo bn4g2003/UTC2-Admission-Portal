@@ -1,4 +1,6 @@
-import { useRouter } from "next/navigation"
+"use client"
+
+import { useRouter, usePathname } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -18,54 +20,114 @@ import {
   Bell,
   FileText,
   FolderOpen,
-  MessageCircle,
   BarChart3,
   Settings,
   Home,
   LogOut,
   User,
+  ChevronRight,
 } from "lucide-react"
+import { cn } from "../../lib/utils"
 
 const menuItems = [
   { title: "Tổng quan", path: "/dashboard", icon: Home },
   { title: "Quản lý Người dùng", path: "/dashboard/users", icon: Users },
   { title: "Kế hoạch Tuyển sinh", path: "/dashboard/enrollment-plans", icon: GraduationCap },
-  { title: "Phân công Nhiệm vụ", path: "/dashboard/assignments", icon: ClipboardList},
+  { title: "Phân công Nhiệm vụ", path: "/dashboard/assignments", icon: ClipboardList },
   { title: "Thông báo", path: "/dashboard/notifications", icon: Bell },
   { title: "Báo cáo", path: "/dashboard/reports", icon: FileText },
   { title: "Tài liệu", path: "/dashboard/documents", icon: FolderOpen },
-  { title: "Chat Nội bộ", path: "/dashboard/chat", icon: MessageCircle },
 ]
 
 export default function AppSidebar() {
   const router = useRouter()
+  const pathname = usePathname()
+
+  const handleLogout = () => {
+    router.push("/login")
+  }
+
+  const handleSettings = () => {
+    router.push("/dashboard/settings")
+  }
+
+  const handleProfile = () => {
+    router.push("/dashboard/profile")
+  }
+
+  const isActive = (path: string) => {
+    if (path === "/dashboard") {
+      return pathname === "/dashboard"
+    }
+    return pathname.startsWith(path)
+  }
 
   return (
-    <Sidebar className="border-r">
-      <SidebarHeader className="border-b px-6 py-4">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-white" />
+    <Sidebar className="border-r bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
+      <SidebarHeader className="border-b border-slate-200 dark:border-slate-700 px-6 py-6 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+        <div className="flex items-center space-x-3">
+          <div className="relative">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+              <BarChart3 className="w-5 h-5 text-white" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-slate-800"></div>
           </div>
-          <div>
-            <h2 className="font-semibold text-lg">UTC2 Dashboard</h2>
-            <p className="text-xs text-muted-foreground">Trưởng Ban</p>
+          <div className="flex-1">
+            <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100">UTC2 Dashboard</h2>
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Trưởng Ban</p>
+            </div>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-3 py-4">
         <SidebarGroup>
-          <SidebarGroupLabel>Chức năng chính</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
+          <SidebarGroupLabel className="px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            Chức năng chính
+          </SidebarGroupLabel>
+          <SidebarGroupContent className="mt-2">
+            <SidebarMenu className="space-y-1">
               {menuItems.map((item) => {
                 const IconComponent = item.icon
+                const active = isActive(item.path)
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton onClick={() => router.push(item.path)} className="w-full justify-start">
-                      <IconComponent className="w-4 h-4" />
-                      <span className="flex-1">{item.title}</span>
+                    <SidebarMenuButton
+                      onClick={() => router.push(item.path)}
+                      className={cn(
+                        "group relative w-full justify-start px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800",
+                        active &&
+                          "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 text-blue-700 dark:text-blue-300 shadow-sm border border-blue-200 dark:border-blue-800",
+                      )}
+                    >
+                      <div className={cn("flex items-center space-x-3 flex-1", active && "font-medium")}>
+                        <div
+                          className={cn(
+                            "p-1.5 rounded-md transition-colors",
+                            active
+                              ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
+                              : "text-slate-600 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300",
+                          )}
+                        >
+                          <IconComponent className="w-4 h-4" />
+                        </div>
+                        <span
+                          className={cn(
+                            "text-sm transition-colors",
+                            active
+                              ? "text-blue-700 dark:text-blue-300 font-medium"
+                              : "text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100",
+                          )}
+                        >
+                          {item.title}
+                        </span>
+                      </div>
+                      {active && <ChevronRight className="w-4 h-4 text-blue-500 dark:text-blue-400" />}
+                      {active && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-r-full"></div>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
@@ -74,14 +136,25 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Hệ thống</SidebarGroupLabel>
-          <SidebarGroupContent>
+        <SidebarGroup className="mt-8">
+          <SidebarGroupLabel className="px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            Hệ thống
+          </SidebarGroupLabel>
+          <SidebarGroupContent className="mt-2">
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton>
-                  <Settings className="w-4 h-4" />
-                  <span>Cài đặt</span>
+                <SidebarMenuButton
+                  onClick={handleSettings}
+                  className="group w-full justify-start px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
+                      <Settings className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
+                      Cài đặt
+                    </span>
+                  </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -89,18 +162,36 @@ export default function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-4">
-        <SidebarMenu>
+      <SidebarFooter className="border-t border-slate-200 dark:border-slate-700 p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+        <SidebarMenu className="space-y-1">
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <User className="w-4 h-4" />
-              <span>Hồ sơ</span>
+            <SidebarMenuButton
+              onClick={handleProfile}
+              className="group w-full justify-start px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
+                  <User className="w-4 h-4" />
+                </div>
+                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
+                  Hồ sơ
+                </span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <LogOut className="w-4 h-4" />
-              <span>Đăng xuất</span>
+            <SidebarMenuButton
+              onClick={handleLogout}
+              className="group w-full justify-start px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                  <LogOut className="w-4 h-4" />
+                </div>
+                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                  Đăng xuất
+                </span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

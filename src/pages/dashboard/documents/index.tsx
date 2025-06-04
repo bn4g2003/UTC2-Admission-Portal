@@ -356,7 +356,7 @@ export default function DocumentsPage() {
 
                 {/* Statistics Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                  <Card>
+                  <Card className="bg-gradient-to-r from-blue-50 to-purple-50">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Tổng tài liệu</CardTitle>
                       <FolderOpen className="h-4 w-4 text-muted-foreground" />
@@ -366,7 +366,7 @@ export default function DocumentsPage() {
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className="bg-gradient-to-r from-purple-50 to-blue-50">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Dung lượng</CardTitle>
                       <HardDrive className="h-4 w-4 text-muted-foreground" />
@@ -376,7 +376,7 @@ export default function DocumentsPage() {
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className="bg-gradient-to-r from-blue-50 to-purple-50">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Loại file</CardTitle>
                       <FileText className="h-4 w-4 text-muted-foreground" />
@@ -386,7 +386,7 @@ export default function DocumentsPage() {
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className="bg-gradient-to-r from-purple-50 to-blue-50">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Mới tuần này</CardTitle>
                       <Calendar className="h-4 w-4 text-muted-foreground" />

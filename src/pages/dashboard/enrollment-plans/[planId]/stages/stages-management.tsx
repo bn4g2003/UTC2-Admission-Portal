@@ -332,7 +332,7 @@ export default function StagesManagement() {
             ) : (
               <>
                 {/* Plan Info Card */}
-                <Card className="mb-8">
+                <Card className="mb-8 bg-gradient-to-r from-cyan-50 to-green-50 border-blue-200">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div>
@@ -373,7 +373,7 @@ export default function StagesManagement() {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                  <Card>
+                  <Card className="bg-gradient-to-r from-cyan-50 to-green-100 border-blue-200">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Tổng số giai đoạn</CardTitle>
                       <ListOrdered className="h-4 w-4 text-muted-foreground" />
@@ -383,7 +383,7 @@ export default function StagesManagement() {
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className="bg-gradient-to-r from-green-50 to-cyan-100 border-blue-200">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Giai đoạn sắp tới</CardTitle>
                       <AlarmClock className="h-4 w-4 text-muted-foreground" />
@@ -395,7 +395,7 @@ export default function StagesManagement() {
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className="bg-gradient-to-r from-cyan-50 to-green-100 border-blue-200">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Giai đoạn đã hoàn thành</CardTitle>
                       <CheckCircle className="h-4 w-4 text-muted-foreground" />
