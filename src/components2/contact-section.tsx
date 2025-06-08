@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import MapComponent from "@/components2/MapComponent"
 import { MapPin, Phone, Mail, Clock, Send } from "lucide-react"
 
 export function ContactSection() {
@@ -150,14 +151,9 @@ export function ContactSection() {
 
         {/* Map */}
         <div className="mt-12">
-          <Card className="overflow-hidden shadow-xl">
-            <div className="h-96 bg-gray-200 flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <MapPin className="h-12 w-12 mx-auto mb-4" />
-                <p>Bản đồ vị trí trường học</p>
-                <p className="text-sm">450-451 Lê Văn Việt, Phường Tăng Nhơn Phú A, TP. Thủ Đức</p>
-              </div>
-            </div>
+          <Card className="overflow-hidden shadow-xl" style={{ height: '500px' }}> {/* Đặt chiều cao rõ ràng */}
+            {/* Thay thế nội dung cũ bằng component bản đồ */}
+            <MapComponent />
           </Card>
         </div>
       </div>

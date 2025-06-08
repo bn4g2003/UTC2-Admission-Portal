@@ -21,6 +21,7 @@ export enum AssignmentStatus {
 
 // Assignment Types
 export interface Assignment {
+  assigned_at: string | number | Date;
   id: string;
   stage_id: string;
   teacher_id: string;
