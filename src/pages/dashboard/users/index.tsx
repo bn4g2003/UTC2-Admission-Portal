@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import AppSidebar from "@/components/app-sidebar"
+import Profile from "@/components/profile"
 import {
   SidebarProvider,
   SidebarTrigger,

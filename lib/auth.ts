@@ -7,6 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_if_not_in_env
 const SALT_ROUNDS = 10; // Số vòng lặp để hash mật khẩu, càng cao càng an toàn nhưng chậm hơn
 
 export interface DecodedToken {
+  userId: any;
   id: string;
   role: string;
   iat: number; // Issued At

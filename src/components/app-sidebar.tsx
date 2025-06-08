@@ -52,7 +52,7 @@ export default function AppSidebar() {
   }
 
   const handleProfile = () => {
-    router.push("/dashboard/profile")
+    router.push("/profile")
   }
 
   const isActive = (path: string) => {

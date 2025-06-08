@@ -38,8 +38,10 @@ import {
   Home,
   LogOut,
   User,
+  FileSpreadsheet,
 } from "lucide-react"
 import GoogleTrendsCharts from "@/components/GoogleTrendsCharts"
+import ReportButtons from "@/components/ReportButtons"
 
 interface MenuItem {
   title: string
@@ -246,6 +248,15 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               </div>
+            </div>
+
+            {/* Reports Section */}
+            <div className="mb-8">
+              <div className="flex items-center space-x-2 mb-4">
+                <FileSpreadsheet className="w-5 h-5" />
+                <h2 className="text-xl font-semibold">Báo cáo</h2>
+              </div>
+              <ReportButtons />
             </div>
 
             {/* Google Trends Section */}

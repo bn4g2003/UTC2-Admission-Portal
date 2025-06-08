@@ -132,6 +132,9 @@ const config = {
       backdropBlur: {
         xs: "2px",
       },
+      fontFamily: {
+        serif: ['"Times New Roman"', 'Georgia', 'serif'],
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
