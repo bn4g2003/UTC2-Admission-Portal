@@ -95,9 +95,15 @@ interface EnrollmentPlan {
 }
 
 export default function StagesManagement() {
-  const params = useParams()
-  const planId = params.planId as string
   const router = useRouter()
+  const params = useParams()
+  const [planId, setPlanId] = useState<string | null>(null)
+  
+  useEffect(() => {
+    if (params?.planId) {
+      setPlanId(params.planId as string)
+    }
+  }, [params])
 
   const [plan, setPlan] = useState<EnrollmentPlan | null>(null)
   const [stages, setStages] = useState<EnrollmentStage[]>([])
@@ -114,16 +120,23 @@ export default function StagesManagement() {
     end_time: "",
     stage_order: 1,
   })
-
   useEffect(() => {
-    if (planId) {
-      fetchPlanAndStages()
+    if (!planId) {
+      return; // Early return if planId is not available
     }
+    fetchPlanAndStages()
   }, [planId])
 
   const fetchPlanAndStages = async () => {
+    if (!planId) {
+      setError("Không tìm thấy ID kế hoạch")
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
+      setError("")
       const planResponse = await fetch(`/api/enrollment-plans/${planId}`, {
         credentials: "include",
       })
@@ -301,6 +314,16 @@ export default function StagesManagement() {
       default:
         return null
     }
+  }
+  if (!planId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>Không tìm thấy thông tin kế hoạch</AlertDescription>
+        </Alert>
+        <Button onClick={() => router.back()}>Quay lại</Button>
+      </div>
+    );
   }
 
   return (
