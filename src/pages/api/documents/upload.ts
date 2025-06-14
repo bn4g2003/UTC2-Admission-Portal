@@ -25,11 +25,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const decodedToken = decode(token) as { role: string; id: string } | null
     if (!decodedToken) {
       return res.status(401).json({ message: 'Invalid token' })
-    }
-
-    // Chỉ TRUONGBAN mới được upload file
-    if (decodedToken.role !== 'TRUONGBAN') {
-      return res.status(403).json({ message: 'Only TRUONGBAN can upload documents' })
+    }    // Chỉ TRUONGBAN và GIAOVIEN mới được upload file
+    if (decodedToken.role !== 'TRUONGBAN' && decodedToken.role !== 'GIAOVIEN') {
+      return res.status(403).json({ message: 'Only TRUONGBAN or GIAOVIEN can upload documents' })
     }
 
     const { file, fileName, fileType } = req.body

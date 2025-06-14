@@ -92,14 +92,14 @@ export default function Dashboard() {
         const data = await response.json()
 
         if (!response.ok || data.role !== "TRUONGBAN") {
-          router.push("/login")
+          router.push("/auth/login")
           return
         }
 
         setUserName(data.email)
       } catch (error) {
         console.error("Auth check failed:", error)
-        router.push("/login")
+        router.push("/auth/login")
       }
     }
 

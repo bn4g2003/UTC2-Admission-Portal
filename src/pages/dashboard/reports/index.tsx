@@ -56,7 +56,18 @@ import {
   Paperclip,
   MessageSquare,
   Filter,
+  Download,
 } from "lucide-react"
+
+interface Document {
+  id: string
+  document_name: string
+  file_path: string
+  file_type: string
+  file_size_kb: number
+  uploaded_at: string
+  downloadUrl?: string
+}
 
 interface Report {
   id: string
@@ -71,6 +82,8 @@ interface Report {
   reviewed_at: string | null
   review_comments: string | null
   assignment_details: string
+  documents?: Document[]
+  document_count?: number
 }
 
 
@@ -84,6 +97,8 @@ export default function ReportsManagement() {
   const [reviewComment, setReviewComment] = useState("")
   const [reviewStatus, setReviewStatus] = useState<"reviewed" | "rejected">("reviewed")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false)
+  const [detailError, setDetailError] = useState("")
 
   const router = useRouter()
 
@@ -110,6 +125,49 @@ export default function ReportsManagement() {
       console.error("Error fetching reports:", err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchReportDetails = async (reportId: string) => {
+    setIsLoadingDetails(true)
+    setDetailError("")
+    setSelectedReport(null)
+    
+    try {
+      const response = await fetch(`/api/reports/${reportId}`, {
+        credentials: "include",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch report details")
+      }
+
+      const data = await response.json()
+      setSelectedReport(data)
+    } catch (err) {
+      setDetailError("Không thể tải chi tiết báo cáo")
+      console.error("Error fetching report details:", err)
+    } finally {
+      setIsLoadingDetails(false)
+    }
+  }
+
+  const handleDownloadDocument = (downloadUrl: string | undefined, fileName: string) => {
+    if (!downloadUrl) {
+      setError("Không thể tải xuống tài liệu. URL không hợp lệ.")
+      return
+    }
+
+    try {
+      const a = document.createElement("a")
+      a.href = downloadUrl
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    } catch (err) {
+      console.error("Error downloading document:", err)
+      setError("Không thể tải xuống tài liệu.")
     }
   }
 
@@ -153,6 +211,14 @@ export default function ReportsManagement() {
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
+
+  const formatFileSize = (sizeInKB: number) => {
+    if (sizeInKB < 1024) {
+      return `${sizeInKB.toFixed(2)} KB`;
+    } else {
+      return `${(sizeInKB / 1024).toFixed(2)} MB`;
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -207,15 +273,6 @@ export default function ReportsManagement() {
           {/* Header */}
           <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />
-            {/* <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Quay lại Dashboard</span>
-            </Button> */}
             <div className="flex-1" />
           </header>
 
@@ -371,7 +428,7 @@ export default function ReportsManagement() {
                                 {report.has_documents ? (
                                   <Badge variant="outline" className="flex items-center gap-1 w-fit">
                                     <Paperclip className="w-3 h-3" />
-                                    Có
+                                    {report.document_count || '?'} tài liệu
                                   </Badge>
                                 ) : (
                                   <span className="text-muted-foreground">Không</span>
@@ -400,7 +457,7 @@ export default function ReportsManagement() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
-                                      setSelectedReport(report)
+                                      fetchReportDetails(report.id);
                                       setIsDetailDialogOpen(true)
                                     }}
                                   >
@@ -411,7 +468,7 @@ export default function ReportsManagement() {
                                       variant="primary"
                                       size="sm"
                                       onClick={() => {
-                                        setSelectedReport(report)
+                                        fetchReportDetails(report.id);
                                         setIsReviewDialogOpen(true)
                                       }}
                                     >
@@ -436,53 +493,104 @@ export default function ReportsManagement() {
                       <DialogTitle>Duyệt Báo cáo</DialogTitle>
                       <DialogDescription>Xem xét và đưa ra quyết định về báo cáo từ giảng viên.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 py-4">
-                      <div>
-                        <h3 className="font-medium mb-2 flex items-center gap-2">
-                          <FileText className="w-4 h-4" />
-                          Nội dung báo cáo
-                        </h3>
-                        <div className="p-3 bg-muted rounded-lg">
-                          <p className="text-sm">{selectedReport?.report_content}</p>
+
+                    {isLoadingDetails ? (
+                      <div className="py-8 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                      </div>
+                    ) : detailError ? (
+                      <div className="py-4">
+                        <Alert variant="destructive">
+                          <AlertDescription>{detailError}</AlertDescription>
+                        </Alert>
+                      </div>
+                    ) : selectedReport && (
+                      <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto">
+                        <div>
+                          <h3 className="font-medium mb-2 flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Nội dung báo cáo
+                          </h3>
+                          <div className="p-3 bg-muted rounded-lg">
+                            <p className="text-sm whitespace-pre-wrap">{selectedReport.report_content}</p>
+                          </div>
+                        </div>
+
+                        {selectedReport.has_documents && selectedReport.documents && selectedReport.documents.length > 0 && (
+                          <div>
+                            <h3 className="font-medium mb-2 flex items-center gap-2">
+                              <Paperclip className="w-4 h-4" />
+                              Tài liệu đính kèm
+                            </h3>
+                            <div className="space-y-2 bg-muted p-2 rounded-lg">
+                              {selectedReport.documents.map((doc) => (
+                                <div key={doc.id} className="flex items-center justify-between bg-background p-2 rounded-md">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm truncate max-w-[200px]">{doc.document_name}</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {formatFileSize(doc.file_size_kb)}
+                                    </Badge>
+                                  </div>
+                                  {doc.downloadUrl && (
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={() => handleDownloadDocument(doc.downloadUrl, doc.document_name)}
+                                      className="flex items-center gap-1 h-8"
+                                    >
+                                      <Download className="h-3 w-3" />
+                                      Tải xuống
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <h3 className="font-medium mb-3">Quyết định duyệt</h3>
+                          <RadioGroup
+                            value={reviewStatus}
+                            onValueChange={(value) => setReviewStatus(value as "reviewed" | "rejected")}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="reviewed" id="reviewed" />
+                              <Label htmlFor="reviewed" className="flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                                Duyệt báo cáo
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="rejected" id="rejected" />
+                              <Label htmlFor="rejected" className="flex items-center gap-2">
+                                <XCircle className="w-4 h-4 text-red-600" />
+                                Từ chối báo cáo
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+
+                        <div>
+                          <h3 className="font-medium mb-2">Nhận xét của bạn</h3>
+                          <Textarea
+                            value={reviewComment}
+                            onChange={(e) => setReviewComment(e.target.value)}
+                            placeholder="Nhập nhận xét chi tiết về báo cáo..."
+                            rows={4}
+                          />
                         </div>
                       </div>
-                      <div>
-                        <h3 className="font-medium mb-3">Quyết định duyệt</h3>
-                        <RadioGroup
-                          value={reviewStatus}
-                          onValueChange={(value) => setReviewStatus(value as "reviewed" | "rejected")}
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="reviewed" id="reviewed" />
-                            <Label htmlFor="reviewed" className="flex items-center gap-2">
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                              Duyệt báo cáo
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="rejected" id="rejected" />
-                            <Label htmlFor="rejected" className="flex items-center gap-2">
-                              <XCircle className="w-4 h-4 text-red-600" />
-                              Từ chối báo cáo
-                            </Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                      <div>
-                        <h3 className="font-medium mb-2">Nhận xét của bạn</h3>
-                        <Textarea
-                          value={reviewComment}
-                          onChange={(e) => setReviewComment(e.target.value)}
-                          placeholder="Nhập nhận xét chi tiết về báo cáo..."
-                          rows={4}
-                        />
-                      </div>
-                    </div>
+                    )}
+
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
                         Hủy
                       </Button>
-                      <Button onClick={handleReviewReport}>
+                      <Button 
+                        onClick={handleReviewReport}
+                        disabled={isLoadingDetails || !selectedReport}
+                      >
                         {reviewStatus === "reviewed" ? "Duyệt báo cáo" : "Từ chối báo cáo"}
                       </Button>
                     </DialogFooter>
@@ -495,8 +603,23 @@ export default function ReportsManagement() {
                     <DialogHeader>
                       <DialogTitle>Chi tiết Báo cáo</DialogTitle>
                     </DialogHeader>
-                    {selectedReport && (
-                      <div className="space-y-6 py-4">
+                    
+                    {isLoadingDetails && (
+                      <div className="py-8 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                      </div>
+                    )}
+                    
+                    {detailError && (
+                      <div className="py-4">
+                        <Alert variant="destructive">
+                          <AlertDescription>{detailError}</AlertDescription>
+                        </Alert>
+                      </div>
+                    )}
+                    
+                    {!isLoadingDetails && selectedReport && (
+                      <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label className="text-sm text-muted-foreground">Người gửi</Label>
@@ -507,44 +630,81 @@ export default function ReportsManagement() {
                             <div className="mt-1">{getStatusBadge(selectedReport.status)}</div>
                           </div>
                         </div>
+                        
                         <div>
                           <Label className="text-sm text-muted-foreground">Chi tiết nhiệm vụ</Label>
                           <p className="font-medium">{selectedReport.assignment_details}</p>
                         </div>
+                        
                         <div>
                           <Label className="text-sm text-muted-foreground">Nội dung báo cáo</Label>
                           <div className="p-3 bg-muted rounded-lg mt-1">
-                            <p>{selectedReport.report_content}</p>
+                            <p className="whitespace-pre-wrap">{selectedReport.report_content}</p>
                           </div>
                         </div>
+
+                        {selectedReport.has_documents && selectedReport.documents && selectedReport.documents.length > 0 && (
+                          <div>
+                            <Label className="text-sm text-muted-foreground">Tài liệu đính kèm</Label>
+                            <div className="mt-2 space-y-2">
+                              {selectedReport.documents.map((doc) => (
+                                <div key={doc.id} className="flex items-center justify-between bg-muted p-3 rounded-md">
+                                  <div>
+                                    <p className="font-medium flex items-center">
+                                      <Paperclip className="h-4 w-4 mr-2" />
+                                      {doc.document_name}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {doc.file_type} • {formatFileSize(doc.file_size_kb)} • Tải lên ngày: {formatDateTime(doc.uploaded_at)}
+                                    </p>
+                                  </div>
+                                  
+                                  {doc.downloadUrl ? (
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={() => handleDownloadDocument(doc.downloadUrl, doc.document_name)}
+                                      className="flex items-center gap-1"
+                                    >
+                                      <Download className="h-4 w-4" />
+                                      Tải xuống
+                                    </Button>
+                                  ) : (
+                                    <Button variant="outline" size="sm" disabled>
+                                      <span className="text-muted-foreground">Không có URL</span>
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label className="text-sm text-muted-foreground">Thời gian gửi</Label>
                             <p className="font-medium">{formatDateTime(selectedReport.submitted_at)}</p>
                           </div>
-                          <div>
-                            <Label className="text-sm text-muted-foreground">Tài liệu đính kèm</Label>
-                            <p className="font-medium">
-                              {selectedReport.has_documents ? "Có tài liệu" : "Không có tài liệu"}
-                            </p>
-                          </div>
+                          
+                          {selectedReport.reviewed_at && (
+                            <div>
+                              <Label className="text-sm text-muted-foreground">Thời gian duyệt</Label>
+                              <p className="font-medium">{formatDateTime(selectedReport.reviewed_at)}</p>
+                            </div>
+                          )}
                         </div>
-                        {selectedReport.reviewed_at && (
-                          <div>
-                            <Label className="text-sm text-muted-foreground">Thời gian duyệt</Label>
-                            <p className="font-medium">{formatDateTime(selectedReport.reviewed_at)}</p>
-                          </div>
-                        )}
+                        
                         {selectedReport.review_comments && (
                           <div>
                             <Label className="text-sm text-muted-foreground">Nhận xét</Label>
                             <div className="p-3 bg-muted rounded-lg mt-1">
-                              <p>{selectedReport.review_comments}</p>
+                              <p className="whitespace-pre-wrap">{selectedReport.review_comments}</p>
                             </div>
                           </div>
                         )}
                       </div>
                     )}
+                    
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
                         Đóng

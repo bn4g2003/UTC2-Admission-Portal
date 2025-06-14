@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import {
   Sidebar,
@@ -39,12 +40,35 @@ const menuItems = [
   { title: "Tài liệu", path: "/dashboard/documents", icon: FolderOpen },
 ]
 
-export default function AppSidebar() {
-  const router = useRouter()
+export default function AppSidebar() {  const router = useRouter()
   const pathname = usePathname()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      // Gọi API để xóa cookie token
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
 
-  const handleLogout = () => {
-    router.push("/login")
+      if (!response.ok) {
+        throw new Error('Lỗi khi đăng xuất');
+      }
+
+      // Chuyển hướng người dùng đến trang đăng nhập
+      router.push("/auth/login");
+    } catch (error) {
+      console.error('Lỗi đăng xuất:', error);
+      // Vẫn điều hướng đến trang đăng nhập ngay cả khi có lỗi
+      router.push("/auth/login");
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
 
   const handleSettings = () => {
@@ -178,18 +202,22 @@ export default function AppSidebar() {
                 </span>
               </div>
             </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
+          </SidebarMenuItem>          <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
+              disabled={isLoggingOut}
               className="group w-full justify-start px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
             >
               <div className="flex items-center space-x-3">
                 <div className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-                  <LogOut className="w-4 h-4" />
+                  {isLoggingOut ? (
+                    <div className="w-4 h-4 border-2 border-t-transparent border-slate-600 dark:border-slate-400 rounded-full animate-spin" />
+                  ) : (
+                    <LogOut className="w-4 h-4" />
+                  )}
                 </div>
                 <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-                  Đăng xuất
+                  {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
                 </span>
               </div>
             </SidebarMenuButton>

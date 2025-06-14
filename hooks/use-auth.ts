@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 interface UseAuthOptions {
   redirectTo?: string;
@@ -10,7 +11,10 @@ export function useAuth(options: UseAuthOptions = {}) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<{id: string; role: string; email: string} | null>(null);
+  const [user, setUser] = useState<{
+    name: string;id: string; role: string; email: string
+} | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -58,6 +62,26 @@ export function useAuth(options: UseAuthOptions = {}) {
 
     checkAuth();
   }, [router, options.redirectTo, options.requireRole]);
+  // Hàm đăng xuất
+  const logout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await axios.post('/api/auth/logout');
+      setUser(null);
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      setError('Đăng xuất thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
-  return { isLoading, error, user };
+  return { 
+    isLoading, 
+    error, 
+    user, 
+    logout,
+    isLoggingOut
+  };
 }

@@ -1,3 +1,51 @@
+-- Bảng USERS (Người dùng)
+CREATE TABLE users (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- ID duy nhất cho mỗi người dùng
+email VARCHAR(255) UNIQUE NOT NULL, -- Email đăng nhập, phải là duy nhất
+password_hash VARCHAR(255) NOT NULL, -- Mật khẩu đã được mã hóa (hash)
+role VARCHAR(50) NOT NULL DEFAULT 'GIAOVIEN', -- Vai trò của người dùng: 'TRUONGBAN' hoặc 'GIAOVIEN'
+full_name VARCHAR(255), -- Tên đầy đủ của người dùng
+phone_number VARCHAR(20), -- Số điện thoại
+address TEXT, -- Địa chỉ
+date_of_birth DATE, -- Ngày sinh
+created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Thời gian tạo tài khoản
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP -- Thời gian cập nhật thông tin cuối cùng
+);
+-- Tạo chỉ mục (index) trên cột email để tăng tốc độ truy vấn khi tìm kiếm người dùng theo email
+CREATE INDEX idx_users_email ON users (email);
+
+-- Bảng ENROLLMENT_PLANS (Kế hoạch Tuyển sinh)
+-- Do TRUONGBAN tạo, chứa thông tin tổng thể về một kế hoạch tuyển sinh
+CREATE TABLE enrollment_plans (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+plan_name VARCHAR(255) NOT NULL, -- Tên của kế hoạch tuyển sinh
+description TEXT, -- Mô tả chi tiết về kế hoạch
+start_date DATE NOT NULL, -- Ngày bắt đầu của kế hoạch
+end_date DATE NOT NULL, -- Ngày kết thúc của kế hoạch
+created_by UUID NOT NULL, -- ID của TRUONGBAN đã tạo kế hoạch này
+created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+CONSTRAINT fk_plan_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT -- Đảm bảo người tạo tồn tại
+);
+
+-- Bảng ENROLLMENT_STAGES (Các Giai đoạn trong Kế hoạch Tuyển sinh)
+-- Chi tiết từng giai đoạn trong một kế hoạch tuyển sinh cụ thể
+CREATE TABLE enrollment_stages (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+plan_id UUID NOT NULL, -- ID của kế hoạch tuyển sinh mà giai đoạn này thuộc về
+stage_name VARCHAR(255) NOT NULL, -- Tên của giai đoạn
+stage_description TEXT, -- Mô tả chi tiết về giai đoạn
+start_time TIMESTAMP WITH TIME ZONE NOT NULL, -- Thời gian bắt đầu cụ thể của giai đoạn
+end_time TIMESTAMP WITH TIME ZONE NOT NULL, -- Thời gian kết thúc cụ thể của giai đoạn
+stage_order INTEGER NOT NULL, -- Thứ tự của giai đoạn trong kế hoạch (ví dụ: 1, 2, 3...)
+created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+CONSTRAINT fk_stage_plan_id FOREIGN KEY (plan_id) REFERENCES enrollment_plans(id) ON DELETE CASCADE, -- Nếu kế hoạch bị xóa, các giai đoạn cũng bị xóa
+UNIQUE (plan_id, stage_order) -- Đảm bảo mỗi kế hoạch có thứ tự giai đoạn duy nhất
+);
+
+-- Bảng ASSIGNMENTS (Phân công Nhiệm vụ)
+-- Phân công GIAOVIEN cho từng nhiệm vụ/giai đoạn cụ thể trong kế hoạch
 CREATE TABLE assignments (
 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 stage_id UUID NOT NULL, -- ID của giai đoạn mà nhiệm vụ này thuộc về
@@ -36,7 +84,6 @@ CONSTRAINT fk_user_notification_notification_id FOREIGN KEY (notification_id) RE
 -- Bảng REPORTS (Báo cáo)
 -- Báo cáo công việc từ GIAOVIEN về nhiệm vụ được phân công, TRUONGBAN duyệt
 CREATE TABLE reports (
-<<<<<<< HEAD
 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 assignment_id UUID NOT NULL, -- ID của nhiệm vụ mà báo cáo này liên quan
 reported_by UUID NOT NULL, -- ID của GIAOVIEN đã gửi báo cáo
@@ -60,32 +107,29 @@ CONSTRAINT fk_rd_report_id FOREIGN KEY (report_id) REFERENCES reports(id) ON DEL
 CONSTRAINT fk_rd_document_id FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE RESTRICT -- Nếu tài liệu bị xóa (không nên xảy ra khi đang liên kết), hãy hạn chế
 );
 
-=======
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    assignment_id UUID NOT NULL,                    -- ID của nhiệm vụ mà báo cáo này liên quan
-    reported_by UUID NOT NULL,                      -- ID của GIAOVIEN đã gửi báo cáo
-    report_content TEXT NOT NULL,                   -- Nội dung chi tiết của báo cáo
-    has_documents BOOLEAN DEFAULT FALSE,
-    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Thời gian gửi báo cáo
-    status VARCHAR(50) DEFAULT 'submitted' NOT NULL, -- Trạng thái báo cáo: 'submitted', 'reviewed', 'rejected'
-    reviewed_by UUID,                               -- ID của TRUONGBAN đã duyệt báo cáo (có thể NULL nếu chưa duyệt)
-    reviewed_at TIMESTAMP WITH TIME ZONE,           -- Thời gian báo cáo được duyệt
-    review_comments TEXT,                           -- Bình luận của TRUONGBAN khi duyệt/từ chối
-    CONSTRAINT fk_report_assignment_id FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_report_reported_by FOREIGN KEY (reported_by) REFERENCES users(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_report_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL -- Nếu TRUONGBAN duyệt bị xóa, trường này thành NULL
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+assignment_id UUID NOT NULL, -- ID của nhiệm vụ mà báo cáo này liên quan
+reported_by UUID NOT NULL, -- ID của GIAOVIEN đã gửi báo cáo
+report_content TEXT NOT NULL, -- Nội dung chi tiết của báo cáo
+has_documents BOOLEAN DEFAULT FALSE,
+submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Thời gian gửi báo cáo
+status VARCHAR(50) DEFAULT 'submitted' NOT NULL, -- Trạng thái báo cáo: 'submitted', 'reviewed', 'rejected'
+reviewed_by UUID, -- ID của TRUONGBAN đã duyệt báo cáo (có thể NULL nếu chưa duyệt)
+reviewed_at TIMESTAMP WITH TIME ZONE, -- Thời gian báo cáo được duyệt
+review_comments TEXT, -- Bình luận của TRUONGBAN khi duyệt/từ chối
+CONSTRAINT fk_report_assignment_id FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE RESTRICT,
+CONSTRAINT fk_report_reported_by FOREIGN KEY (reported_by) REFERENCES users(id) ON DELETE RESTRICT,
+CONSTRAINT fk_report_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL -- Nếu TRUONGBAN duyệt bị xóa, trường này thành NULL
 );
 
 CREATE TABLE report_documents (
-    report_id UUID NOT NULL,            -- ID của báo cáo
-    document_id UUID NOT NULL,          -- ID của tài liệu
-    PRIMARY KEY (report_id, document_id), -- Khóa chính kép
-    CONSTRAINT fk_rd_report_id FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE,     -- Nếu báo cáo bị xóa, liên kết này cũng bị xóa
-    CONSTRAINT fk_rd_document_id FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE RESTRICT -- Nếu tài liệu bị xóa (không nên xảy ra khi đang liên kết), hãy hạn chế
+report_id UUID NOT NULL, -- ID của báo cáo
+document_id UUID NOT NULL, -- ID của tài liệu
+PRIMARY KEY (report_id, document_id), -- Khóa chính kép
+CONSTRAINT fk_rd_report_id FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE, -- Nếu báo cáo bị xóa, liên kết này cũng bị xóa
+CONSTRAINT fk_rd_document_id FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE RESTRICT -- Nếu tài liệu bị xóa (không nên xảy ra khi đang liên kết), hãy hạn chế
 );
 
----
->>>>>>> f5c2f261158f2392c22784be8d28d8e3ff0fbe58
 -- Bảng DOCUMENTS (Tài liệu)
 -- Lưu trữ thông tin về các tài liệu, TRUONGBAN truy xuất/quản lý
 CREATE TABLE documents (
@@ -99,22 +143,12 @@ uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 CONSTRAINT fk_document_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE RESTRICT
 );
 
--- Bảng CHAT_MESSAGES (Tin nhắn Chat)
--- Lưu trữ tin nhắn trong nhóm chat nội bộ
-CREATE TABLE chat_messages (
-id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-sender_id UUID NOT NULL, -- ID của người gửi tin nhắn
-message_content TEXT NOT NULL, -- Nội dung tin nhắn
-sent_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Thời gian gửi tin nhắn
-CONSTRAINT fk_chat_sender_id FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE RESTRICT
-);
-
 -- Các TRIGGER để tự động cập nhật cột 'updated_at'
 -- Hàm này sẽ tự động cập nhật thời gian 'updated_at' mỗi khi có sự thay đổi trên một hàng
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-NEW.updated_at = NOW(); -- Cập nhật cột updated_at của hàng mới/được cập nhật thành thời gian hiện tại
+NEW.updated_at = NOW(); 
 RETURN NEW;
 END;
 $$ language 'plpgsql';

@@ -31,7 +31,8 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
         r.reviewed_at,
         r.review_comments,
         u.full_name as reporter_name,
-        a.assignment_details
+        a.assignment_details,
+        (SELECT COUNT(*) FROM report_documents rd WHERE rd.report_id = r.id) as document_count
       FROM reports r
       LEFT JOIN users u ON r.reported_by = u.id
       LEFT JOIN assignments a ON r.assignment_id = a.id
