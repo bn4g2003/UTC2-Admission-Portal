@@ -7,11 +7,13 @@
     }
   ],
   "env": {
-    "NEXT_PUBLIC_VERCEL_URL": "${VERCEL_URL}"
+    "NEXT_PUBLIC_VERCEL_URL": "${VERCEL_URL}",
+    "DATABASE_URL": "${DATABASE_URL}"
   },
   "build": {
     "env": {
-      "NEXT_TELEMETRY_DISABLED": "1"
+      "NEXT_TELEMETRY_DISABLED": "1",
+      "DATABASE_URL": "${DATABASE_URL}"
     }
   }
 }
