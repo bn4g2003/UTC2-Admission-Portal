@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "../../hooks/use-auth"
 import { useToast } from "../../hooks/use-toast"
+import VideoCall from "./VideoCall"
 import { 
   MessageCircle, 
   Send, 
@@ -21,7 +22,9 @@ import {
   Bell,
   BellOff,
   Volume2,
-  VolumeX
+  VolumeX,
+  Video,
+  Phone
 } from "lucide-react"
 
 interface Message {
@@ -71,13 +74,19 @@ export default function ChatComponent() {
   const [newMessage, setNewMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [users, setUsers] = useState<UserOption[]>([])
-  const [showNewRoomDialog, setShowNewRoomDialog] = useState(false)
+  const [showNewRoomDialog, setShowNewRoomDialog] = useState(false)  
   const [newRoomName, setNewRoomName] = useState("")
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [totalUnreadCount, setTotalUnreadCount] = useState(0)
+  const [showVideoCall, setShowVideoCall] = useState(false)
+  const [videoCallData, setVideoCallData] = useState<{
+    roomId: string;
+    authToken: string;
+    userName: string;
+  } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -103,7 +112,7 @@ export default function ChatComponent() {
   const initializeAudio = () => {
     // Create a simple notification sound using Web Audio API
     if (typeof window !== 'undefined') {
-      audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmYZBSuLze/PdygFKXu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dA==')
+      audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmYZBSuLze/PdygFKXu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dA==')
     }
   }
 
@@ -519,6 +528,64 @@ export default function ChatComponent() {
       return date.toLocaleDateString("vi-VN")
     }
   }
+  // Start video call function
+  const startVideoCall = async () => {
+    if (!selectedChat || !user) return;
+    
+    try {      // Generate simple room ID (test với room ID cực kỳ đơn giản)
+      const timestamp = Date.now().toString().slice(-8);
+      const roomId = selectedChat.type === "user" 
+        ? `chat${timestamp}`
+        : `room${timestamp}`;
+      
+      console.log('Generated room ID:', roomId);
+
+      // Get auth token from API
+      const response = await fetch('/api/video/auth-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ roomId, role: 'host' })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVideoCallData({
+          roomId: data.roomId,
+          authToken: data.authToken,
+          userName: data.userName
+        });
+        setShowVideoCall(true);
+        
+        // Send video call invitation message
+        const inviteMessage = `📹 Lời mời video call: ${roomId}`;
+        await sendVideoCallInvite(inviteMessage);
+      }
+    } catch (error) {
+      console.error('Error starting video call:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể bắt đầu video call",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Send video call invite message
+  const sendVideoCallInvite = async (message: string) => {
+    if (!selectedChat) return;
+    
+    const body = selectedChat.type === "user" 
+      ? { message, receiverId: selectedChat.id }
+      : { message, roomId: selectedChat.id };
+
+    await fetch("/api/chat/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body)
+    });
+  };
 
   return (
     <div className="flex h-[600px] border rounded-lg overflow-hidden bg-white">
@@ -812,12 +879,36 @@ export default function ChatComponent() {
                       {selectedChat.type === "user" ? "Trực tuyến" : "Nhóm chat"}
                     </p>
                   </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <span className="text-xs text-gray-500">
-                    {isConnected ? 'Đang kết nối' : 'Mất kết nối'}
-                  </span>
+                </div>                <div className="flex items-center space-x-2">
+                  {/* Video Call Buttons */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={startVideoCall}
+                    className="flex items-center gap-1"
+                    title="Bắt đầu video call"
+                  >
+                    <Video className="h-4 w-4" />
+                    Video
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={startVideoCall}
+                    className="flex items-center gap-1"
+                    title="Gọi thoại"
+                  >
+                    <Phone className="h-4 w-4" />
+                    Gọi
+                  </Button>
+                  
+                  <div className="flex items-center space-x-1 ml-4">
+                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span className="text-xs text-gray-500">
+                      {isConnected ? 'Đang kết nối' : 'Mất kết nối'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -889,7 +980,19 @@ export default function ChatComponent() {
             </div>
           </div>
         )}
-      </div>
+      </div>      {/* Video Call Component */}
+      {showVideoCall && videoCallData && (
+        <VideoCall
+          isOpen={showVideoCall}
+          roomId={videoCallData.roomId}
+          authToken={videoCallData.authToken}
+          userName={videoCallData.userName}
+          onClose={() => {
+            setShowVideoCall(false);
+            setVideoCallData(null);
+          }}
+        />
+      )}
     </div>
   )
 }

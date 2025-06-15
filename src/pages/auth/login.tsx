@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Mail, Lock, GraduationCap, AlertCircle } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 // Interface này không cần thiết nếu bạn không dùng thông tin user từ localStorage
 // Vì chúng ta sẽ dựa vào vai trò từ API response và cookie
@@ -27,6 +28,10 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showForgotDialog, setShowForgotDialog] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState("")
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotMessage, setForgotMessage] = useState("")
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,6 +77,29 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setForgotLoading(true)
+    setForgotMessage("")
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setForgotMessage("Đã gửi email hướng dẫn đặt lại mật khẩu (nếu email tồn tại trong hệ thống). Vui lòng kiểm tra hộp thư.")
+      } else {
+        setForgotMessage(data.message || "Không thể gửi email. Vui lòng thử lại sau.")
+      }
+    } catch (err) {
+      setForgotMessage("Lỗi kết nối máy chủ. Vui lòng thử lại sau.")
+    } finally {
+      setForgotLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center p-4">
@@ -168,10 +196,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200"
-                  onClick={() => {
-                    // Handle forgot password logic here
-                    console.log("Forgot password clicked")
-                  }}
+                  onClick={() => setShowForgotDialog(true)}
                 >
                   Quên mật khẩu?
                 </button>
@@ -194,6 +219,39 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={showForgotDialog} onOpenChange={setShowForgotDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Quên mật khẩu</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div>
+              <Label htmlFor="forgotEmail">Nhập email của bạn</Label>
+              <Input
+                id="forgotEmail"
+                type="email"
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                required
+                placeholder="example@utc2.edu.vn"
+              />
+            </div>
+            {forgotMessage && (
+              <div className="text-sm text-center text-blue-700 bg-blue-50 rounded p-2">{forgotMessage}</div>
+            )}
+            <DialogFooter className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" type="button" onClick={() => setShowForgotDialog(false)} disabled={forgotLoading}>
+                Đóng
+              </Button>
+              <Button type="submit" disabled={forgotLoading}>
+                {forgotLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" /> : "Gửi email"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
