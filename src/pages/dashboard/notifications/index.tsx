@@ -76,11 +76,11 @@ export default function NotificationsManagement() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [isAddNotificationOpen, setIsAddNotificationOpen] = useState(false)
+  const [isAddNotificationOpen, setIsAddNotificationOpen] = useState(false)  
   const [newNotification, setNewNotification] = useState({
     title: "",
     content: "",
-    priority: "medium" as "low" | "medium" | "high" | "urgent",
+    priority: "" as "low" | "medium" | "high" | "urgent",
   })
 
   const router = useRouter()
@@ -113,13 +113,12 @@ export default function NotificationsManagement() {
       setLoading(false)
     }
   }
-
   const handleAddNotification = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
-    if (!newNotification.title || !newNotification.content) {
-      setError("Vui lòng điền đầy đủ thông tin")
+    if (!newNotification.title || !newNotification.content || !newNotification.priority) {
+      setError("Vui lòng điền đầy đủ thông tin và chọn mức độ ưu tiên")
       return
     }
 
@@ -303,11 +302,13 @@ export default function NotificationsManagement() {
                                   })
                                 }
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                required
                               >
-                                <option value="low">Thấp</option>
-                                <option value="medium">Trung bình</option>
-                                <option value="high">Cao</option>
-                                <option value="urgent">Khẩn cấp</option>
+                                <option value="">Chọn mức độ ưu tiên</option>
+                                <option value="urgent" className="text-red-800">Khẩn cấp</option>
+                                <option value="high" className="text-orange-800">Cao</option>
+                                <option value="medium" className="text-blue-800">Trung bình</option>
+                                <option value="low" className="text-green-800">Thấp</option>
                               </select>
                             </div>
                             <div className="grid gap-2">
@@ -323,7 +324,7 @@ export default function NotificationsManagement() {
                             </div>
                           </div>
                           <DialogFooter>
-                            <Button type="submit">Tạo thông báo</Button>
+                            <Button type="submit" className="w-full">Tạo thông báo</Button>
                           </DialogFooter>
                         </form>
                       </DialogContent>

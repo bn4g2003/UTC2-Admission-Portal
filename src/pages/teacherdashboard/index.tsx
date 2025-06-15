@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/router"
 import axios from "axios"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button2"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "../../../hooks/use-auth"
 import { TeacherLayout } from "@/components/teacher-layout"
@@ -32,11 +32,14 @@ type DashboardStats = {
   ongoingPlans: number
 }
 
+const ITEMS_PER_PAGE = 10
+
 export default function TeacherDashboard() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -67,7 +70,7 @@ export default function TeacherDashboard() {
       case "pending":
         return "bg-yellow-200 text-yellow-800"
       case "in_progress":
-        return "bg-blue-200 text-blue-800"
+        return "bg-amber-200 text-amber-800"
       case "completed":
         return "bg-green-200 text-green-800"
       case "cancelled":
@@ -132,6 +135,29 @@ export default function TeacherDashboard() {
     }
   }
 
+  // Pagination calculations
+  const totalAssignments = stats?.recentAssignments?.length || 0
+  const totalPages = Math.ceil(totalAssignments / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const currentAssignments = stats?.recentAssignments?.slice(startIndex, endIndex) || []
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1)
+    }
+  }
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1)
+    }
+  }
+
   if (isLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -173,149 +199,138 @@ export default function TeacherDashboard() {
         {isLoadingStats ? (
           <div className="flex items-center justify-center h-64 bg-white rounded-lg shadow-sm border">
             <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
               <p className="text-gray-600">Đang tải dữ liệu...</p>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard
-              title="Nhiệm vụ"
-              value={stats?.assignments.total || 0}
-              description="Tổng số nhiệm vụ"
-              icon={<ClipboardList className="h-5 w-5" />}
-              iconColor="bg-blue-100 text-blue-600"
-            >
-              <div className="flex flex-wrap gap-2 mt-3">
-                {stats &&
-                  Object.entries(stats.assignments.byStatus).map(([status, count]) => (
-                    <Badge key={status} variant="outline" className={getStatusColor(status)}>
-                      {getStatusDisplay(status)}: {count}
-                    </Badge>
-                  ))}
-              </div>
-            </StatCard>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatCard
+                title="Nhiệm vụ"
+                value={stats?.assignments.total || 0}
+                description="Tổng số nhiệm vụ"
+                icon={<ClipboardList className="h-6 w-6" />}
+                className="bg-gradient-to-br from-amber-50 to-amber-100/50"
+              />
+              <StatCard
+                title="Báo cáo"
+                value={stats?.reports.total || 0}
+                description="Tổng số báo cáo"
+                icon={<FileText className="h-6 w-6" />}
+                className="bg-gradient-to-br from-amber-50 to-amber-100/50"
+              />
+              <StatCard
+                title="Thông báo chưa đọc"
+                value={stats?.unreadNotifications || 0}
+                description="Cần xem xét"
+                icon={<Bell className="h-6 w-6" />}
+                className="bg-gradient-to-br from-amber-50 to-amber-100/50"
+              />
+              <StatCard
+                title="Kế hoạch đang diễn ra"
+                value={stats?.ongoingPlans || 0}
+                description="Đang thực hiện"
+                icon={<Calendar className="h-6 w-6" />}
+                className="bg-gradient-to-br from-amber-50 to-amber-100/50"
+              />
+            </div>
 
-            <StatCard
-              title="Báo cáo"
-              value={stats?.reports.total || 0}
-              description="Tổng số báo cáo"
-              icon={<FileText className="h-5 w-5" />}
-              iconColor="bg-purple-100 text-purple-600"
-            >
-              <div className="flex flex-wrap gap-2 mt-3">
-                {stats &&
-                  Object.entries(stats.reports.byStatus).map(([status, count]) => (
-                    <Badge key={status} variant="outline" className={getStatusColor(status)}>
-                      {getStatusDisplay(status)}: {count}
-                    </Badge>
-                  ))}
-              </div>
-            </StatCard>
-
-            <StatCard
-              title="Thông báo"
-              value={stats?.unreadNotifications || 0}
-              description="Thông báo chưa đọc"
-              icon={<Bell className="h-5 w-5" />}
-              iconColor="bg-yellow-100 text-yellow-600"
-            >
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full mt-3 flex items-center justify-between"
-                onClick={() => router.push("/teacherdashboard/notifications")}
-              >
-                Xem thông báo
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </StatCard>
-
-            <StatCard
-              title="Kế hoạch tuyển sinh"
-              value={stats?.ongoingPlans || 0}
-              description="Kế hoạch đang diễn ra"
-              icon={<Calendar className="h-5 w-5" />}
-              iconColor="bg-green-100 text-green-600"
-            >
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full mt-3 flex items-center justify-between"
-                onClick={() => router.push("/teacherdashboard/enrollment-plans")}
-              >
-                Xem kế hoạch
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </StatCard>
-          </div>
-        )}
-
-        <div>
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-gray-50 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-medium">Nhiệm vụ gần đây</CardTitle>
-                  <CardDescription>Các nhiệm vụ được phân công gần đây nhất</CardDescription>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => router.push("/teacherdashboard/assignments")}>
-                  Xem tất cả
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {stats?.recentAssignments && stats.recentAssignments.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b bg-gray-50">
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Kế hoạch</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Giai đoạn</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Chi tiết</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Trạng thái</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.recentAssignments.map((assignment) => (
-                        <tr key={assignment.id} className="border-b hover:bg-gray-50 transition-colors">
-                          <td className="py-3 px-4">{assignment.plan_name}</td>
-                          <td className="py-3 px-4">{assignment.stage_name}</td>
-                          <td className="py-3 px-4">
-                            {assignment.assignment_details.length > 50
-                              ? `${assignment.assignment_details.substring(0, 50)}...`
-                              : assignment.assignment_details}
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge className={`${getStatusColor(assignment.status)} font-medium`}>
-                              {getStatusDisplay(assignment.status)}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">
+            <div>
+              <Card className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                <CardHeader className="border-b bg-gradient-to-r from-amber-50 to-amber-100/50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-bold">Nhiệm vụ gần đây</CardTitle>
+                      <CardDescription>Danh sách các nhiệm vụ mới nhất của bạn</CardDescription>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={() => router.push("/teacherdashboard/assignments")}
+                      className="flex items-center"
+                    >
+                      Xem tất cả
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {currentAssignments.length > 0 ? (
+                    <div className="divide-y">
+                      {currentAssignments.map((assignment) => (
+                        <div
+                          key={assignment.id}
+                          className="p-4 hover:bg-amber-50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-medium text-gray-900">{assignment.stage_name}</h3>
+                                <Badge className={getStatusColor(assignment.status)}>
+                                  {getStatusDisplay(assignment.status)}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{assignment.assignment_details}</p>
+                              <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <Calendar className="h-4 w-4" />
+                                <span>{new Date(assignment.assigned_at).toLocaleDateString("vi-VN")}</span>
+                                <span className="text-gray-400">•</span>
+                                <span className="text-amber-600 font-medium">{assignment.plan_name}</span>
+                              </div>
+                            </div>
                             <Button
+                              variant="secondary"
                               size="sm"
-                              variant="outline"
                               onClick={() => router.push(`/teacherdashboard/assignments/${assignment.id}`)}
                             >
                               Chi tiết
                             </Button>
-                          </td>
-                        </tr>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <ClipboardList className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p className="font-medium">Không có nhiệm vụ nào gần đây</p>
-                  <p className="text-sm mt-1">Các nhiệm vụ mới sẽ xuất hiện ở đây</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-32">
+                      <p className="text-gray-500">Không có nhiệm vụ nào gần đây</p>
+                    </div>
+                  )}
+                </CardContent>
+                {totalPages > 1 && (
+                  <div className="p-4 border-t bg-gradient-to-r from-amber-50 to-amber-100/50">
+                    <div className="flex items-center justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                      >
+                        Trước
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "primary" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(page)}
+                          >
+                            {page}
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                      >
+                        Sau
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </div>
+          </>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-4">
           <Button className="flex-1 py-6 text-base" onClick={() => router.push("/teacherdashboard/assignments")}>

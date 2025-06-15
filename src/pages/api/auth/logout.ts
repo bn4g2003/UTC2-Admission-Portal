@@ -6,11 +6,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  // Clear the auth cookie by setting an expired date
   const cookie = serialize('token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    expires: new Date(0), // Setting an expired date effectively deletes the cookie
+    expires: new Date(0), 
     path: '/',
     sameSite: 'lax',
   });

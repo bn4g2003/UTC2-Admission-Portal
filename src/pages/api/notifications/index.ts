@@ -29,11 +29,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             n.title,
             n.content,
             n.created_at,
+            n.priority,
             u.full_name as created_by_name,
             u.email as created_by_email
           FROM notifications n
           JOIN users u ON n.created_by = u.id
-          ORDER BY n.created_at DESC
+          ORDER BY 
+            CASE 
+              WHEN n.priority = 'urgent' THEN 1
+              WHEN n.priority = 'high' THEN 2
+              WHEN n.priority = 'medium' THEN 3
+              WHEN n.priority = 'low' THEN 4
+              ELSE 5
+            END,
+            n.created_at DESC
         `);
 
         return res.status(200).json(notifications.rows);
@@ -44,11 +53,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(403).json({ message: 'Chỉ Trưởng ban mới có quyền tạo thông báo.' });
         }
 
-        const { title, content } = req.body;
+        const { title, content, priority } = req.body;
 
         // Validate required fields
-        if (!title || !content) {
-          return res.status(400).json({ message: 'Tiêu đề và nội dung là bắt buộc.' });
+        if (!title || !content || !priority) {
+          return res.status(400).json({ message: 'Tiêu đề, nội dung và mức độ ưu tiên là bắt buộc.' });
+        }
+
+        // Validate priority value
+        const validPriorities = ['urgent', 'high', 'medium', 'low'];
+        if (!validPriorities.includes(priority)) {
+          return res.status(400).json({ message: 'Mức độ ưu tiên không hợp lệ.' });
         }
 
         // Lấy userId từ decodedToken.id (đã sửa từ decodedToken.userId)
@@ -61,12 +76,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Tạo thông báo mới và trả về thông tin người tạo cùng một lúc
-        // Bằng cách sử dụng RETURNING * và JOIN với bảng users trong cùng một truy vấn.
         const newNotification = await client.query(`
-          INSERT INTO notifications (title, content, created_by)
-          VALUES ($1, $2, $3)
-          RETURNING id, title, content, created_at, created_by
-        `, [title, content, userId]);
+          INSERT INTO notifications (title, content, priority, created_by)
+          VALUES ($1, $2, $3, $4)
+          RETURNING id, title, content, priority, created_at, created_by
+        `, [title, content, priority, userId]);
 
         // Tránh truy vấn thứ hai nếu bạn có thể lấy thông tin trực tiếp từ INSERT RETURNING
         // và sau đó JOIN với users nếu cần thêm full_name, email.
@@ -77,6 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               n.id,
               n.title,
               n.content,
+              n.priority,
               n.created_at,
               u.full_name as created_by_name,
               u.email as created_by_email

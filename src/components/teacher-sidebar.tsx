@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/router"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button2"
 import { LayoutDashboard, ClipboardList, FileText, Bell, Calendar, User, LogOut, School } from "lucide-react"
 import axios from "axios"
 
@@ -68,8 +68,8 @@ export function TeacherSidebar({ unreadNotifications = 0, activeRoute = "" }: Te
     <div className="w-64 bg-white border-r h-screen flex flex-col shadow-sm">
       <div className="p-6 border-b">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <School className="h-6 w-6 text-white" />
+          <div className="bg-amber-300 p-2 rounded-lg">
+            <School className="h-6 w-6 text-amber-900" />
           </div>
           <div>
             <h2 className="text-xl font-bold">Giáo viên</h2>
@@ -83,12 +83,8 @@ export function TeacherSidebar({ unreadNotifications = 0, activeRoute = "" }: Te
           {navItems.map((item) => (
             <Button
               key={item.path}
-              variant={isActive(item.path, item.exact) ? "primary" : "outline"}
-              className={`w-full justify-start text-base font-medium ${
-                isActive(item.path, item.exact)
-                  ? "bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
-                  : "hover:bg-gray-100"
-              }`}
+              variant={isActive(item.path, item.exact) ? "primary" : "secondary"}
+              className="w-full justify-start text-base font-medium"
               onClick={() => router.push(item.path)}
             >
               {item.icon}
@@ -106,7 +102,7 @@ export function TeacherSidebar({ unreadNotifications = 0, activeRoute = "" }: Te
       <div className="p-4 border-t">
         <Button
           variant="outline"
-          className="w-full justify-start bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+          className="w-full justify-start"
           onClick={handleLogout}
         >
           <LogOut className="mr-2 h-5 w-5" />
