@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/router"
 import { Button } from "@/components/ui/button2"
-import { LayoutDashboard, ClipboardList, FileText, Bell, Calendar, User, LogOut, School } from "lucide-react"
+import { LayoutDashboard, ClipboardList, FileText, Bell, Calendar, User, LogOut, School, MessageCircle } from "lucide-react"
 import axios from "axios"
 
 interface TeacherSidebarProps {
@@ -38,6 +38,11 @@ export function TeacherSidebar({ unreadNotifications = 0, activeRoute = "" }: Te
       name: "Báo cáo",
       icon: <FileText className="mr-2 h-5 w-5" />,
       path: "/teacherdashboard/reports",
+    },
+    {
+      name: "Tin nhắn",
+      icon: <MessageCircle className="mr-2 h-5 w-5" />,
+      path: "/teacherdashboard/chat",
     },
     {
       name: "Thông báo",

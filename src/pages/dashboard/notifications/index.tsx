@@ -80,7 +80,7 @@ export default function NotificationsManagement() {
   const [newNotification, setNewNotification] = useState({
     title: "",
     content: "",
-    priority: "" as "low" | "medium" | "high" | "urgent",
+    priority: "medium" as "low" | "medium" | "high" | "urgent",
   })
 
   const router = useRouter()

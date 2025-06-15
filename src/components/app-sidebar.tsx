@@ -27,6 +27,7 @@ import {
   LogOut,
   User,
   ChevronRight,
+  MessageCircle,
 } from "lucide-react"
 import { cn } from "../../lib/utils"
 
@@ -35,6 +36,7 @@ const menuItems = [
   { title: "Quản lý Người dùng", path: "/dashboard/users", icon: Users },
   { title: "Kế hoạch Tuyển sinh", path: "/dashboard/enrollment-plans", icon: GraduationCap },
   { title: "Phân công Nhiệm vụ", path: "/dashboard/assignments", icon: ClipboardList },
+  { title: "Tin nhắn", path: "/dashboard/chat", icon: MessageCircle },
   { title: "Thông báo", path: "/dashboard/notifications", icon: Bell },
   { title: "Báo cáo", path: "/dashboard/reports", icon: FileText },
   { title: "Tài liệu", path: "/dashboard/documents", icon: FolderOpen },
