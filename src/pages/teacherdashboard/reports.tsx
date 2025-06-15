@@ -78,27 +78,28 @@ export default function TeacherReports() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {      case "submitted":
-        return "bg-amber-50 text-amber-700 border-amber-200"
+    switch (status.toLowerCase()) {
+      case "submitted":
+        return "bg-indigo-200 text-indigo-800"
       case "reviewed":
-        return "bg-green-50 text-green-700 border-green-200"
+        return "bg-green-200 text-green-800"
       case "rejected":
-        return "bg-red-50 text-red-700 border-red-200"
+        return "bg-orange-200 text-orange-800"
       default:
-        return "bg-gray-50 text-gray-700 border-gray-200"
+        return "bg-gray-200 text-gray-800"
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
+  const getStatusDisplay = (status: string) => {
+    switch (status.toLowerCase()) {
       case "submitted":
-        return <Clock className="h-4 w-4" />
+        return "Đã gửi"
       case "reviewed":
-        return <CheckCircle className="h-4 w-4" />
+        return "Đã duyệt"
       case "rejected":
-        return <XCircle className="h-4 w-4" />
+        return "Từ chối"
       default:
-        return <FileText className="h-4 w-4" />
+        return status
     }
   }
 
@@ -141,7 +142,7 @@ export default function TeacherReports() {
 
   return (
     <TeacherLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Báo cáo của tôi</h1>
@@ -152,13 +153,13 @@ export default function TeacherReports() {
               <Plus className="h-4 w-4 mr-2" />
               Tạo báo cáo
             </Button>
-            <Button variant="primary" onClick={() => fetchReports()}>Làm mới</Button>
+            <Button onClick={() => fetchReports()}>Làm mới dữ liệu</Button>
           </div>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-r from-amber-50 to-amber-100 border-amber-200">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-blue-800">Tổng số báo cáo</CardTitle>
             </CardHeader>
@@ -166,17 +167,15 @@ export default function TeacherReports() {
               <div className="text-2xl font-bold text-blue-900">{statusCounts.all}</div>
             </CardContent>
           </Card>
-
-          <Card className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200">
+          <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-yellow-800">Chờ duyệt</CardTitle>
+              <CardTitle className="text-sm font-medium text-indigo-800">Đã gửi</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-900">{statusCounts.submitted}</div>
+              <div className="text-2xl font-bold text-indigo-900">{statusCounts.submitted}</div>
             </CardContent>
           </Card>
-
-          <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+          <Card className="bg-gradient-to-br from-green-50 to-green-100/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-green-800">Đã duyệt</CardTitle>
             </CardHeader>
@@ -184,13 +183,12 @@ export default function TeacherReports() {
               <div className="text-2xl font-bold text-green-900">{statusCounts.reviewed}</div>
             </CardContent>
           </Card>
-
-          <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200">
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-red-800">Từ chối</CardTitle>
+              <CardTitle className="text-sm font-medium text-orange-800">Từ chối</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-900">{statusCounts.rejected}</div>
+              <div className="text-2xl font-bold text-orange-900">{statusCounts.rejected}</div>
             </CardContent>
           </Card>
         </div>
@@ -213,9 +211,9 @@ export default function TeacherReports() {
         </div>
 
         {isLoadingReports ? (
-          <div className="flex items-center justify-center h-64 bg-white rounded-lg border">
+          <div className="flex items-center justify-center h-64 bg-white rounded-lg shadow-sm border">
             <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
               <p className="text-gray-600">Đang tải dữ liệu...</p>
             </div>
           </div>
@@ -238,8 +236,8 @@ export default function TeacherReports() {
         ) : (
           <div className="space-y-4">
             {filteredReports.map((report) => (
-              <Card key={report.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3 bg-gray-50 border-b">
+              <Card key={report.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3 bg-gradient-to-r from-amber-50 to-amber-100/50 border-b">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -260,12 +258,7 @@ export default function TeacherReports() {
                       </CardDescription>
                     </div>
                     <Badge className={`${getStatusColor(report.report_status)} font-medium flex items-center gap-1`}>
-                      {getStatusIcon(report.report_status)}
-                      {report.report_status === "submitted"
-                        ? "Đã gửi"
-                        : report.report_status === "reviewed"
-                          ? "Đã duyệt"
-                          : "Từ chối"}
+                      {getStatusDisplay(report.report_status)}
                     </Badge>
                   </div>
                 </CardHeader>

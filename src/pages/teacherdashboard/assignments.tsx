@@ -26,12 +26,15 @@ type Assignment = {
   plan_name: string
 }
 
+const ITEMS_PER_PAGE = 10
+
 export default function AssignmentsPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -43,13 +46,16 @@ export default function AssignmentsPage() {
     if (user && user.role === "GIAOVIEN") {
       fetchAssignments()
     }
-  }, [user, statusFilter])
+  }, [user, statusFilter, currentPage])
 
   const fetchAssignments = async () => {
     try {
       setIsLoadingAssignments(true)
       const url = "/api/teacher/assignments"
-      const params: Record<string, string> = {}
+      const params: Record<string, string> = {
+        page: String(currentPage),
+        limit: String(ITEMS_PER_PAGE),
+      }
 
       if (statusFilter !== "all") {
         params.status = statusFilter
@@ -81,17 +87,72 @@ export default function AssignmentsPage() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "pending":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200"
+        return "bg-yellow-200 text-yellow-800"
       case "in_progress":
-        return "bg-blue-50 text-blue-700 border-blue-200"
+        return "bg-amber-200 text-amber-800"
       case "completed":
-        return "bg-green-50 text-green-700 border-green-200"
+        return "bg-green-200 text-green-800"
       case "cancelled":
-        return "bg-red-50 text-red-700 border-red-200"
+        return "bg-red-200 text-red-800"
+      case "submitted":
+        return "bg-indigo-200 text-indigo-800"
+      case "reviewed":
+        return "bg-purple-200 text-purple-800"
+      case "rejected":
+        return "bg-orange-200 text-orange-800"
+      case "đã_gửi":
+        return "bg-indigo-200 text-indigo-800"
+      case "đã_duyệt":
+        return "bg-purple-200 text-purple-800"
+      case "từ_chối":
+        return "bg-orange-200 text-orange-800"
+      case "sắp_diễn_ra":
+        return "bg-purple-200 text-purple-800"
+      case "đang_diễn_ra":
+        return "bg-blue-200 text-blue-800"
+      case "hoàn_thành":
+        return "bg-green-200 text-green-800"
+      case "hoạt_động":
+        return "bg-green-200 text-green-800"
       default:
-        return "bg-gray-50 text-gray-700 border-gray-200"
+        return "bg-gray-200 text-gray-800"
+    }
+  }
+
+  const getStatusDisplay = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "pending":
+        return "Chờ xử lý"
+      case "in_progress":
+        return "Đang thực hiện"
+      case "completed":
+        return "Đã hoàn thành"
+      case "cancelled":
+        return "Đã hủy"
+      case "submitted":
+        return "Đã gửi"
+      case "reviewed":
+        return "Đã duyệt"
+      case "rejected":
+        return "Từ chối"
+      case "đã_gửi":
+        return "Đã gửi"
+      case "đã_duyệt":
+        return "Đã duyệt"
+      case "từ_chối":
+        return "Từ chối"
+      case "sắp_diễn_ra":
+        return "Sắp diễn ra"
+      case "đang_diễn_ra":
+        return "Đang diễn ra"
+      case "hoàn_thành":
+        return "Đã hoàn thành"
+      case "hoạt_động":
+        return "Đang hoạt động"
+      default:
+        return status
     }
   }
 
@@ -122,15 +183,38 @@ export default function AssignmentsPage() {
     return new Date(dateString).toLocaleDateString("vi-VN")
   }
 
+  // Pagination calculations
+  const totalAssignments = assignments.length
+  const totalPages = Math.ceil(totalAssignments / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const currentAssignments = assignments.slice(startIndex, endIndex)
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1)
+    }
+  }
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1)
+    }
+  }
+
   return (
     <TeacherLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Nhiệm vụ của tôi</h1>
             <p className="text-gray-500 mt-1">Quản lý và theo dõi các nhiệm vụ được phân công</p>
           </div>
-          <Button onClick={() => fetchAssignments()}>Làm mới</Button>
+          <Button onClick={() => fetchAssignments()}>Làm mới dữ liệu</Button>
         </div>
 
         <div className="flex items-center gap-4 p-4 bg-white rounded-lg border">
@@ -151,9 +235,9 @@ export default function AssignmentsPage() {
         </div>
 
         {isLoadingAssignments ? (
-          <div className="flex items-center justify-center h-64 bg-white rounded-lg border">
+          <div className="flex items-center justify-center h-64 bg-white rounded-lg shadow-sm border">
             <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
               <p className="text-gray-600">Đang tải dữ liệu...</p>
             </div>
           </div>
@@ -169,9 +253,9 @@ export default function AssignmentsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {assignments.map((assignment) => (
-              <Card key={assignment.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3 bg-gray-50 border-b">
+            {currentAssignments.map((assignment) => (
+              <Card key={assignment.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3 bg-gradient-to-r from-amber-50 to-amber-100/50 border-b">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-semibold text-gray-900">{assignment.plan_name}</CardTitle>
@@ -194,13 +278,7 @@ export default function AssignmentsPage() {
                       </div>
                     </div>
                     <Badge className={`${getStatusColor(assignment.status)} font-medium`}>
-                      {assignment.status === "pending"
-                        ? "Chờ xử lý"
-                        : assignment.status === "in_progress"
-                          ? "Đang thực hiện"
-                          : assignment.status === "completed"
-                            ? "Đã hoàn thành"
-                            : "Đã hủy"}
+                      {getStatusDisplay(assignment.status)}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -220,39 +298,35 @@ export default function AssignmentsPage() {
 
                   <div className="flex items-center justify-end gap-2 pt-2 border-t">
                     {assignment.status === "pending" && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleStatusChange(assignment.id, "in_progress")}
-                          className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                          title={new Date(assignment.start_time) > new Date() 
-                            ? `Nhiệm vụ sẽ bắt đầu vào ${formatDate(assignment.start_time)}`
-                            : "Bắt đầu thực hiện nhiệm vụ"}
-                        >
-                          Bắt đầu thực hiện
-                          {new Date(assignment.start_time) > new Date() && (
-                            <span className="ml-1 text-xs">({formatDate(assignment.start_time)})</span>
-                          )}
-                        </Button>
-                      </>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusChange(assignment.id, "in_progress")}
+                        className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                        title={new Date(assignment.start_time) > new Date() 
+                          ? `Nhiệm vụ sẽ bắt đầu vào ${formatDate(assignment.start_time)}`
+                          : "Bắt đầu thực hiện nhiệm vụ"}
+                      >
+                        Bắt đầu thực hiện
+                        {new Date(assignment.start_time) > new Date() && (
+                          <span className="ml-1 text-xs">({formatDate(assignment.start_time)})</span>
+                        )}
+                      </Button>
                     )}
 
                     {assignment.status === "in_progress" && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleStatusChange(assignment.id, "completed")}
-                          className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                          title={`Hạn nộp: ${formatDate(assignment.end_time)}`}
-                        >
-                          Đánh dấu hoàn thành
-                          {new Date(assignment.end_time) < new Date() && (
-                            <span className="ml-1 text-xs text-red-600">(Đã quá hạn)</span>
-                          )}
-                        </Button>
-                      </>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusChange(assignment.id, "completed")}
+                        className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        title={`Hạn nộp: ${formatDate(assignment.end_time)}`}
+                      >
+                        Đánh dấu hoàn thành
+                        {new Date(assignment.end_time) < new Date() && (
+                          <span className="ml-1 text-xs text-red-600">(Đã quá hạn)</span>
+                        )}
+                      </Button>
                     )}
 
                     <Button
@@ -275,6 +349,44 @@ export default function AssignmentsPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Pagination controls */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t bg-gradient-to-r from-amber-50 to-amber-100/50">
+            <div className="flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                className="whitespace-nowrap"
+              >
+                Trước
+              </Button>
+              <div className="flex items-center gap-2">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "primary" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                className="whitespace-nowrap"
+              >
+                Sau
+              </Button>
+            </div>
           </div>
         )}
       </div>
