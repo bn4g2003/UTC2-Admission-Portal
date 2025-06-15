@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "../../hooks/use-auth"
+import { useToast } from "../../hooks/use-toast"
 import { 
   MessageCircle, 
   Send, 
@@ -16,7 +17,11 @@ import {
   Plus, 
   User,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Bell,
+  BellOff,
+  Volume2,
+  VolumeX
 } from "lucide-react"
 
 interface Message {
@@ -35,6 +40,7 @@ interface Conversation {
   other_user_role: string
   last_message: string
   last_message_time: string
+  unread_count?: number
 }
 
 interface ChatRoom {
@@ -44,6 +50,7 @@ interface ChatRoom {
   member_count: number
   last_message: string
   last_message_time: string
+  unread_count?: number
 }
 
 interface UserOption {
@@ -55,6 +62,7 @@ interface UserOption {
 
 export default function ChatComponent() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState<"conversations" | "rooms">("conversations")
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([])
@@ -67,16 +75,85 @@ export default function ChatComponent() {
   const [newRoomName, setNewRoomName] = useState("")
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [isConnected, setIsConnected] = useState(false)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     if (user) {
       fetchConversations()
       fetchChatRooms()
       fetchUsers()
+      initializeNotifications()
+      initializeAudio()
     }
   }, [user])
+
+  // Initialize browser notifications
+  const initializeNotifications = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission()
+    }
+  }
+
+  // Initialize notification sound
+  const initializeAudio = () => {
+    // Create a simple notification sound using Web Audio API
+    if (typeof window !== 'undefined') {
+      audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmYZBSuLze/PdygFKXu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dA==')
+    }
+  }
+
+  // Play notification sound
+  const playNotificationSound = () => {
+    if (soundEnabled && audioRef.current) {
+      audioRef.current.currentTime = 0
+      audioRef.current.play().catch(e => console.log('Could not play sound:', e))
+    }
+  }
+
+  // Show browser notification
+  const showBrowserNotification = (title: string, body: string, icon?: string) => {
+    if (!notificationsEnabled || !('Notification' in window) || Notification.permission !== 'granted') {
+      return
+    }
+
+    // Don't show notification if user is currently on the chat tab
+    if (document.hasFocus()) {
+      return
+    }
+
+    const notification = new Notification(title, {
+      body,
+      icon: icon || '/favicon.ico',
+      tag: 'chat-message'
+    })
+
+    // Auto close after 5 seconds
+    setTimeout(() => {
+      notification.close()
+    }, 5000)
+
+    // Focus window when clicked
+    notification.onclick = () => {
+      window.focus()
+      notification.close()
+    }
+  }
+
+  // Update total unread count
+  const updateTotalUnreadCount = () => {
+    const conversationUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0)
+    const roomUnread = chatRooms.reduce((sum, room) => sum + (room.unread_count || 0), 0)
+    setTotalUnreadCount(conversationUnread + roomUnread)
+  }
+
+  useEffect(() => {
+    updateTotalUnreadCount()
+  }, [conversations, chatRooms])
 
   // Separate useEffect for SSE connection
   useEffect(() => {
@@ -92,6 +169,7 @@ export default function ChatComponent() {
       }
     }
   }, [user])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -121,25 +199,72 @@ export default function ChatComponent() {
             
           case 'new_message':
             const newMessage = data.data
+            const isFromCurrentUser = newMessage.sender_id === user?.id
             
-            // Chỉ cập nhật messages nếu tin nhắn thuộc về cuộc trò chuyện hiện tại
-            if (selectedChat) {
-              const isRelevantMessage = 
-                (selectedChat.type === "user" && 
-                 (newMessage.sender_id === selectedChat.id || newMessage.receiver_id === selectedChat.id)) ||
-                (selectedChat.type === "room" && newMessage.chat_room_id === selectedChat.id)
-              
-              if (isRelevantMessage) {
-                setMessages(prev => {
-                  // Tránh duplicate messages
-                  const exists = prev.some(msg => msg.id === newMessage.id)
-                  if (exists) return prev
-                  return [...prev, newMessage]
-                })
+            // Don't notify for messages from current user
+            if (isFromCurrentUser) {
+              // Still update UI for current user's messages
+              if (selectedChat) {
+                const isRelevantMessage = 
+                  (selectedChat.type === "user" && 
+                   (newMessage.sender_id === selectedChat.id || newMessage.receiver_id === selectedChat.id)) ||
+                  (selectedChat.type === "room" && newMessage.chat_room_id === selectedChat.id)
+                
+                if (isRelevantMessage) {
+                  setMessages(prev => {
+                    const exists = prev.some(msg => msg.id === newMessage.id)
+                    if (exists) return prev
+                    return [...prev, newMessage]
+                  })
+                }
               }
+              break
             }
             
-            // Cập nhật danh sách conversations/rooms
+            // Handle new message from other users
+            const isCurrentChatMessage = selectedChat && (
+              (selectedChat.type === "user" && 
+               (newMessage.sender_id === selectedChat.id || newMessage.receiver_id === selectedChat.id)) ||
+              (selectedChat.type === "room" && newMessage.chat_room_id === selectedChat.id)
+            )
+            
+            // Update messages if it's for current chat
+            if (isCurrentChatMessage) {
+              setMessages(prev => {
+                const exists = prev.some(msg => msg.id === newMessage.id)
+                if (exists) return prev
+                return [...prev, newMessage]
+              })
+              
+              // Mark as read immediately if chat is open
+              setTimeout(() => {
+                markMessageAsRead(newMessage)
+              }, 500)
+            } else {
+              // Show notifications for messages not in current chat
+              const senderName = newMessage.sender_name || 'Người dùng'
+              const messagePreview = newMessage.message_content.length > 50 
+                ? newMessage.message_content.substring(0, 50) + '...'
+                : newMessage.message_content
+              
+              // Show toast notification
+              toast({
+                title: `Tin nhắn mới từ ${senderName}`,
+                description: messagePreview,
+                duration: 5000,
+              })
+              
+              // Show browser notification
+              showBrowserNotification(
+                `Tin nhắn mới từ ${senderName}`,
+                messagePreview
+              )
+              
+              // Play sound
+              playNotificationSound()
+            }
+            
+            // Update conversation/room lists
             if (newMessage.receiver_id) {
               fetchConversations()
             } else if (newMessage.chat_room_id) {
@@ -166,7 +291,8 @@ export default function ChatComponent() {
       // Retry connection after 5 seconds
       setTimeout(() => {
         if (user) {
-          initSSEConnection()        }
+          initSSEConnection()
+        }
       }, 5000)
     }
 
@@ -175,18 +301,23 @@ export default function ChatComponent() {
       console.log('SSE connection closed')
     })
   }
-  // Remove old polling logic since we're using SSE now
-  // useEffect(() => {
-  //   let interval: NodeJS.Timeout
-  //   if (selectedChat) {
-  //     interval = setInterval(() => {
-  //       fetchMessages()
-  //     }, 3000)
-  //   }
-  //   return () => {
-  //     if (interval) clearInterval(interval)
-  //   }
-  // }, [selectedChat])
+  // Mark message as read
+  const markMessageAsRead = async (message: Message) => {
+    try {
+      await fetch('/api/chat/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          conversationId: message.receiver_id ? message.sender_id : undefined,
+          roomId: message.chat_room_id ? message.chat_room_id : undefined
+        })
+      })
+      console.log('Marked message as read:', message.id)
+    } catch (error) {
+      console.error('Error marking message as read:', error)
+    }
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -253,6 +384,7 @@ export default function ChatComponent() {
       console.error("Error fetching messages:", error)
     }
   }
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedChat) return
     
@@ -318,10 +450,36 @@ export default function ChatComponent() {
       console.error("Error creating chat room:", error)
     }
   }
-
-  const selectChat = (type: "user" | "room", id: string, name: string) => {
+  const selectChat = async (type: "user" | "room", id: string, name: string) => {
     setSelectedChat({ type, id, name })
     setMessages([])
+    
+    // Mark messages as read on server
+    try {
+      await fetch('/api/chat/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          conversationId: type === "user" ? id : undefined,
+          roomId: type === "room" ? id : undefined
+        })
+      })
+    } catch (error) {
+      console.error('Error marking messages as read:', error)
+    }
+    
+    // Mark this chat as read (clear unread count locally)
+    if (type === "user") {
+      setConversations(prev => prev.map(conv => 
+        conv.other_user_id === id ? { ...conv, unread_count: 0 } : conv
+      ))
+    } else {
+      setChatRooms(prev => prev.map(room => 
+        room.id === id ? { ...room, unread_count: 0 } : room
+      ))
+    }
+    
     // Fetch messages for the selected chat
     setTimeout(() => {
       if (type === "user") {
@@ -369,73 +527,119 @@ export default function ChatComponent() {
         {/* Header */}
         <div className="p-4 border-b bg-gradient-to-r from-amber-50 to-amber-100/50">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-lg">Tin nhắn</h3>
-            <Dialog open={showNewRoomDialog} onOpenChange={setShowNewRoomDialog}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="flex items-center gap-1">
-                  <Plus className="h-4 w-4" />
-                  Tạo nhóm
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Tạo phòng chat mới</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="roomName">Tên phòng chat</Label>
-                    <Input
-                      id="roomName"
-                      value={newRoomName}
-                      onChange={(e) => setNewRoomName(e.target.value)}
-                      placeholder="Nhập tên phòng chat..."
-                    />
-                  </div>
-                  <div>
-                    <Label>Thêm thành viên</Label>
-                    <Select onValueChange={(value) => {
-                      if (!selectedMembers.includes(value)) {
-                        setSelectedMembers([...selectedMembers, value])
-                      }
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn thành viên..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.full_name} ({user.role})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {selectedMembers.map((memberId) => {
-                        const member = users.find(u => u.id === memberId)
-                        return (
-                          <Badge key={memberId} variant="secondary" className="flex items-center gap-1">
-                            {member?.full_name}
-                            <button
-                              onClick={() => setSelectedMembers(selectedMembers.filter(id => id !== memberId))}
-                              className="ml-1 text-xs"
-                            >
-                              ×
-                            </button>
-                          </Badge>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  <Button onClick={createChatRoom} className="w-full">
-                    Tạo phòng chat
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-lg">Tin nhắn</h3>
+              {totalUnreadCount > 0 && (
+                <Badge variant="destructive" className="animate-pulse">
+                  {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Notification controls */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+                className="p-1 h-8 w-8"
+                title={notificationsEnabled ? "Tắt thông báo" : "Bật thông báo"}
+              >
+                {notificationsEnabled ? (
+                  <Bell className="h-4 w-4" />
+                ) : (
+                  <BellOff className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="p-1 h-8 w-8"
+                title={soundEnabled ? "Tắt âm thanh" : "Bật âm thanh"}
+              >
+                {soundEnabled ? (
+                  <Volume2 className="h-4 w-4" />
+                ) : (
+                  <VolumeX className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+              <Dialog open={showNewRoomDialog} onOpenChange={setShowNewRoomDialog}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="flex items-center gap-1">
+                    <Plus className="h-4 w-4" />
+                    Tạo nhóm
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Tạo phòng chat mới</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="roomName">Tên phòng chat</Label>
+                      <Input
+                        id="roomName"
+                        value={newRoomName}
+                        onChange={(e) => setNewRoomName(e.target.value)}
+                        placeholder="Nhập tên phòng chat..."
+                      />
+                    </div>
+                    <div>
+                      <Label>Thêm thành viên</Label>
+                      <Select onValueChange={(value) => {
+                        if (!selectedMembers.includes(value)) {
+                          setSelectedMembers([...selectedMembers, value])
+                        }
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn thành viên..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.full_name} ({user.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedMembers.map((memberId) => {
+                          const member = users.find(u => u.id === memberId)
+                          return (
+                            <Badge key={memberId} variant="secondary" className="flex items-center gap-1">
+                              {member?.full_name}
+                              <button
+                                onClick={() => setSelectedMembers(selectedMembers.filter(id => id !== memberId))}
+                                className="ml-1 text-xs"
+                              >
+                                ×
+                              </button>
+                            </Badge>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <Button onClick={createChatRoom} className="w-full">
+                      Tạo phòng chat
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+          
+          {/* Connection Status */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-xs text-gray-600">
+                {isConnected ? 'Đã kết nối' : 'Mất kết nối'}
+              </span>
+            </div>
           </div>
           
           {/* Tabs */}
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mt-3">
             <button
               onClick={() => setActiveTab("conversations")}
               className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
@@ -492,25 +696,37 @@ export default function ChatComponent() {
                     <button
                       key={conv.other_user_id}
                       onClick={() => selectChat("user", conv.other_user_id, conv.other_user_name)}
-                      className={`w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors ${
+                      className={`w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors relative ${
                         selectedChat?.type === "user" && selectedChat?.id === conv.other_user_id
                           ? "bg-blue-50 border-l-4 border-l-blue-500"
+                          : conv.unread_count && conv.unread_count > 0
+                          ? "bg-yellow-50 border-l-4 border-l-yellow-400"
                           : ""
                       }`}
                     >
-                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium relative">
                         {conv.other_user_name.charAt(0).toUpperCase()}
+                        {conv.unread_count && conv.unread_count > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs animate-pulse"
+                          >
+                            {conv.unread_count > 9 ? '9+' : conv.unread_count}
+                          </Badge>
+                        )}
                       </div>
                       <div className="ml-3 flex-1 text-left">
                         <div className="flex items-center justify-between">
-                          <p className="font-medium text-sm">{conv.other_user_name}</p>
+                          <p className={`text-sm ${conv.unread_count && conv.unread_count > 0 ? 'font-bold' : 'font-medium'}`}>
+                            {conv.other_user_name}
+                          </p>
                           {conv.last_message_time && (
                             <span className="text-xs text-gray-500">
                               {formatDate(conv.last_message_time)}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p className={`text-xs truncate ${conv.unread_count && conv.unread_count > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
                           {conv.last_message || "Chưa có tin nhắn"}
                         </p>
                       </div>
@@ -527,18 +743,30 @@ export default function ChatComponent() {
                 <button
                   key={room.id}
                   onClick={() => selectChat("room", room.id, room.room_name)}
-                  className={`w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors ${
+                  className={`w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors relative ${
                     selectedChat?.type === "room" && selectedChat?.id === room.id
                       ? "bg-blue-50 border-l-4 border-l-blue-500"
+                      : room.unread_count && room.unread_count > 0
+                      ? "bg-yellow-50 border-l-4 border-l-yellow-400"
                       : ""
                   }`}
                 >
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white">
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white relative">
                     <Users className="h-5 w-5" />
+                    {room.unread_count && room.unread_count > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs animate-pulse"
+                      >
+                        {room.unread_count > 9 ? '9+' : room.unread_count}
+                      </Badge>
+                    )}
                   </div>
                   <div className="ml-3 flex-1 text-left">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{room.room_name}</p>
+                      <p className={`text-sm ${room.unread_count && room.unread_count > 0 ? 'font-bold' : 'font-medium'}`}>
+                        {room.room_name}
+                      </p>
                       {room.last_message_time && (
                         <span className="text-xs text-gray-500">
                           {formatDate(room.last_message_time)}
@@ -546,7 +774,7 @@ export default function ChatComponent() {
                       )}
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className={`text-xs truncate ${room.unread_count && room.unread_count > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
                         {room.last_message || "Chưa có tin nhắn"}
                       </p>
                       <span className="text-xs text-gray-400 ml-2">
@@ -564,32 +792,33 @@ export default function ChatComponent() {
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
         {selectedChat ? (
-          <>            {/* Chat Header */}
-            <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
-              <div className="flex items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${
-                  selectedChat.type === "room" ? "bg-green-500" : "bg-blue-500"
-                }`}>
-                  {selectedChat.type === "room" ? (
-                    <Users className="h-5 w-5" />
-                  ) : (
-                    selectedChat.name.charAt(0).toUpperCase()
-                  )}
+          <>
+            {/* Chat Header */}
+            <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-blue-100/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-10 h-10 ${
+                    selectedChat.type === "user" ? "bg-blue-500" : "bg-green-500"
+                  } rounded-full flex items-center justify-center text-white font-medium`}>
+                    {selectedChat.type === "user" ? (
+                      selectedChat.name.charAt(0).toUpperCase()
+                    ) : (
+                      <Users className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">{selectedChat.name}</h4>
+                    <p className="text-sm text-gray-500">
+                      {selectedChat.type === "user" ? "Trực tuyến" : "Nhóm chat"}
+                    </p>
+                  </div>
                 </div>
-                <div className="ml-3">
-                  <h4 className="font-medium">{selectedChat.name}</h4>
-                  <p className="text-sm text-gray-500">
-                    {selectedChat.type === "room" ? "Phòng chat nhóm" : "Trò chuyện cá nhân"}
-                  </p>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <span className="text-xs text-gray-500">
+                    {isConnected ? 'Đang kết nối' : 'Mất kết nối'}
+                  </span>
                 </div>
-              </div>
-              
-              {/* Connection Status */}
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="text-xs text-gray-500">
-                  {isConnected ? 'Đang kết nối' : 'Mất kết nối'}
-                </span>
               </div>
             </div>
 
@@ -598,7 +827,9 @@ export default function ChatComponent() {
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.sender_id === user?.id ? "justify-end" : "justify-start"}`}
+                  className={`flex ${
+                    message.sender_id === user?.id ? "justify-end" : "justify-start"
+                  }`}
                 >
                   <div
                     className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
@@ -607,8 +838,10 @@ export default function ChatComponent() {
                         : "bg-gray-200 text-gray-900"
                     }`}
                   >
-                    {message.sender_id !== user?.id && selectedChat.type === "room" && (
-                      <p className="text-xs font-medium mb-1">{message.sender_name}</p>
+                    {message.sender_id !== user?.id && (
+                      <p className="text-xs font-medium mb-1 opacity-70">
+                        {message.sender_name}
+                      </p>
                     )}
                     <p className="text-sm">{message.message_content}</p>
                     <p className={`text-xs mt-1 ${

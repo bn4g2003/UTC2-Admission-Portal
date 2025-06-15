@@ -19,8 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     switch (req.method) {
-      case 'GET':
-        // Lấy danh sách phòng chat của user hiện tại
+      case 'GET':        // Lấy danh sách phòng chat của user hiện tại
         const rooms = await client.query(`
           SELECT DISTINCT 
             cr.id,
@@ -44,7 +43,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               WHERE m.chat_room_id = cr.id
               ORDER BY m.sent_at DESC
               LIMIT 1
-            ) as last_message_time
+            ) as last_message_time,            (
+              SELECT COUNT(*)
+              FROM messages m2
+              WHERE m2.chat_room_id = cr.id
+                AND m2.sender_id != $1
+                AND m2.is_read = false
+            ) as unread_count
           FROM chat_rooms cr
           JOIN chat_room_members crm ON cr.id = crm.room_id
           WHERE crm.user_id = $1

@@ -19,8 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     switch (req.method) {
-      case 'GET':
-        // Lấy danh sách cuộc trò chuyện 1-1 của user hiện tại
+      case 'GET':        // Lấy danh sách cuộc trò chuyện 1-1 của user hiện tại
         const conversations = await client.query(`
           SELECT DISTINCT
             CASE 
@@ -44,7 +43,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                  OR (m2.sender_id = CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END AND m2.receiver_id = $1)
               ORDER BY m2.sent_at DESC
               LIMIT 1
-            ) as last_message_time
+            ) as last_message_time,            (
+              SELECT COUNT(*)
+              FROM messages m3
+              WHERE m3.sender_id = CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END
+                AND m3.receiver_id = $1
+                AND m3.is_read = false
+            ) as unread_count
           FROM messages m
           JOIN users u ON u.id = CASE 
             WHEN m.sender_id = $1 THEN m.receiver_id
