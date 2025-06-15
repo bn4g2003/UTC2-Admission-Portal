@@ -220,25 +220,39 @@ export default function AssignmentsPage() {
 
                   <div className="flex items-center justify-end gap-2 pt-2 border-t">
                     {assignment.status === "pending" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStatusChange(assignment.id, "in_progress")}
-                        className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                      >
-                        Bắt đầu thực hiện
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStatusChange(assignment.id, "in_progress")}
+                          className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                          title={new Date(assignment.start_time) > new Date() 
+                            ? `Nhiệm vụ sẽ bắt đầu vào ${formatDate(assignment.start_time)}`
+                            : "Bắt đầu thực hiện nhiệm vụ"}
+                        >
+                          Bắt đầu thực hiện
+                          {new Date(assignment.start_time) > new Date() && (
+                            <span className="ml-1 text-xs">({formatDate(assignment.start_time)})</span>
+                          )}
+                        </Button>
+                      </>
                     )}
 
                     {assignment.status === "in_progress" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleStatusChange(assignment.id, "completed")}
-                        className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                      >
-                        Đánh dấu hoàn thành
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStatusChange(assignment.id, "completed")}
+                          className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                          title={`Hạn nộp: ${formatDate(assignment.end_time)}`}
+                        >
+                          Đánh dấu hoàn thành
+                          {new Date(assignment.end_time) < new Date() && (
+                            <span className="ml-1 text-xs text-red-600">(Đã quá hạn)</span>
+                          )}
+                        </Button>
+                      </>
                     )}
 
                     <Button

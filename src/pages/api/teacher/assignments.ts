@@ -91,12 +91,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         }
 
-        // Check if the assignment exists and belongs to this teacher
+        // Check if the assignment exists and get stage timing information
         const assignmentCheck = await client.query(
-          'SELECT id FROM assignments WHERE id = $1 AND assigned_to = $2',
+          `SELECT 
+            a.id,
+            es.start_time,
+            es.end_time,
+            CURRENT_TIMESTAMP > es.start_time as can_start,
+            CURRENT_TIMESTAMP > es.end_time as is_overdue
+          FROM assignments a
+          JOIN enrollment_stages es ON a.stage_id = es.id
+          WHERE a.id = $1 AND a.assigned_to = $2`,
           [assignmentId, decodedToken.id]
-        );        if (assignmentCheck.rows.length === 0) {
+        );
+
+        if (assignmentCheck.rows.length === 0) {
           return res.status(404).json({ message: 'Không tìm thấy nhiệm vụ hoặc không có quyền cập nhật.' });
+        }
+
+        const assignment = assignmentCheck.rows[0];
+
+        // Check if the assignment can be started
+        if (newStatus === 'in_progress' && !assignment.can_start) {
+          return res.status(400).json({ 
+            message: 'Không thể bắt đầu nhiệm vụ trước thời gian bắt đầu của giai đoạn.' 
+          });
+        }
+
+        // Check if the assignment can be completed
+        if (newStatus === 'completed' && !assignment.can_start) {
+          return res.status(400).json({ 
+            message: 'Không thể hoàn thành nhiệm vụ trước thời gian bắt đầu của giai đoạn.' 
+          });
         }
         
         // Update the assignment status
