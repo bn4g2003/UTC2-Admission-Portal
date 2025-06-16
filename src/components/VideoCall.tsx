@@ -1,4 +1,4 @@
-import { useHMSActions, useHMSStore, selectIsConnectedToRoom, selectPeers } from '@100mslive/react-sdk';
+import { useHMSActions, useHMSStore, selectIsConnectedToRoom, selectPeers, selectLocalPeer, selectVideoTrackByID, selectAudioTrackByID } from '@100mslive/react-sdk';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,15 +20,14 @@ interface VideoCallProps {
   userName: string;
 }
 
-export default function VideoCall({ isOpen, onClose, roomId, authToken, userName }: VideoCallProps) {
-  const hmsActions = useHMSActions();
+export default function VideoCall({ isOpen, onClose, roomId, authToken, userName }: VideoCallProps) {  const hmsActions = useHMSActions();
   const isConnected = useHMSStore(selectIsConnectedToRoom);
   const peers = useHMSStore(selectPeers);
+  const localPeer = useHMSStore(selectLocalPeer);
   
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-
   useEffect(() => {
     if (isOpen && authToken && roomId) {
       joinRoom();
@@ -40,13 +39,33 @@ export default function VideoCall({ isOpen, onClose, roomId, authToken, userName
       }
     };
   }, [isOpen, authToken, roomId]);
+  // Sync local track states with HMS store
+  // Import these selectors at the top if not already imported:
+  // import { selectVideoTrackByID, selectAudioTrackByID } from '@100mslive/react-sdk';
 
+  const videoTrack = useHMSStore(localPeer?.videoTrack ? selectVideoTrackByID(localPeer.videoTrack) : () => undefined);
+  const audioTrack = useHMSStore(localPeer?.audioTrack ? selectAudioTrackByID(localPeer.audioTrack) : () => undefined);
+
+  useEffect(() => {
+    if (isConnected && localPeer) {
+      setIsVideoMuted(!videoTrack?.enabled);
+      setIsAudioMuted(!audioTrack?.enabled);
+    }
+  }, [isConnected, localPeer, videoTrack, audioTrack]);
   const joinRoom = async () => {
     try {
       await hmsActions.join({
         authToken,
-        userName
+        userName,
+        settings: {
+          isAudioMuted: false,
+          isVideoMuted: false
+        }
       });
+      
+      // Set initial states after joining
+      setIsVideoMuted(false);
+      setIsAudioMuted(false);
     } catch (error) {
       console.error('Error joining room:', error);
     }
@@ -60,15 +79,22 @@ export default function VideoCall({ isOpen, onClose, roomId, authToken, userName
       console.error('Error leaving room:', error);
     }
   };
-
   const toggleVideo = async () => {
-    await hmsActions.setLocalVideoEnabled(!isVideoMuted);
-    setIsVideoMuted(!isVideoMuted);
+    try {
+      await hmsActions.setLocalVideoEnabled(isVideoMuted);
+      setIsVideoMuted(!isVideoMuted);
+    } catch (error) {
+      console.error('Error toggling video:', error);
+    }
   };
 
   const toggleAudio = async () => {
-    await hmsActions.setLocalAudioEnabled(!isAudioMuted);
-    setIsAudioMuted(!isAudioMuted);
+    try {
+      await hmsActions.setLocalAudioEnabled(isAudioMuted);
+      setIsAudioMuted(!isAudioMuted);
+    } catch (error) {
+      console.error('Error toggling audio:', error);
+    }
   };
 
   const toggleScreenShare = async () => {

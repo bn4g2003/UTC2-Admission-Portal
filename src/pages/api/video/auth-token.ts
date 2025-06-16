@@ -88,14 +88,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } else {
         throw new Error('Failed to create/get room');
       }
-    }
-
-    // Step 4: Generate auth token for user to join room
+    }    // Step 4: Generate auth token for user to join room
     const userTokenPayload = {
       access_key: appAccessKey,
       room_id: actualRoomId,
-      user_id: decodedToken.id,
-      role,
+      user_id: decodedToken.id.toString(),
+      role: role,
       type: 'app',
       version: 2,
       iat: Math.floor(Date.now() / 1000),

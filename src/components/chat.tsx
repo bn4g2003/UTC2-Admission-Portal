@@ -513,30 +513,64 @@ export default function ChatComponent() {
       minute: "2-digit"
     })
   }
+  // Check if message contains video call invitation
+  const isVideoCallMessage = (content: string) => {
+    return content.includes('📹 Lời mời video call') && content.includes('Room ID:');
+  };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
+  // Extract room ID from video call message
+  const extractRoomId = (content: string) => {
+    const match = content.match(/Room ID:\s*([^\n]+)/);
+    return match ? match[1].trim() : null;
+  };
 
-    if (date.toDateString() === today.toDateString()) {
-      return formatTime(dateString)
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Hôm qua"
-    } else {
-      return date.toLocaleDateString("vi-VN")
+  // Join video call from message
+  const joinVideoCallFromMessage = async (roomId: string) => {
+    if (!user) return;
+    
+    try {
+      // Get auth token from API
+      const response = await fetch('/api/video/auth-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ roomId, role: 'guest' })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVideoCallData({
+          roomId: data.roomId,
+          authToken: data.authToken,
+          userName: data.userName
+        });
+        setShowVideoCall(true);
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Lỗi",
+          description: errorData.message || "Không thể tham gia cuộc gọi",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error joining video call:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tham gia cuộc gọi",
+        duration: 3000,
+      });
     }
-  }
-  // Start video call function
+  };// Start video call function
   const startVideoCall = async () => {
     if (!selectedChat || !user) return;
     
-    try {      // Generate simple room ID (test với room ID cực kỳ đơn giản)
-      const timestamp = Date.now().toString().slice(-8);
+    try {
+      // Generate simple room ID with chat info
+      const timestamp = Date.now().toString().slice(-6);
       const roomId = selectedChat.type === "user" 
-        ? `chat${timestamp}`
-        : `room${timestamp}`;
+        ? `chat_${user.id}_${selectedChat.id}_${timestamp}`
+        : `room_${selectedChat.id}_${timestamp}`;
       
       console.log('Generated room ID:', roomId);
 
@@ -557,15 +591,24 @@ export default function ChatComponent() {
         });
         setShowVideoCall(true);
         
-        // Send video call invitation message
-        const inviteMessage = `📹 Lời mời video call: ${roomId}`;
+        // Send video call invitation message with join link
+        const inviteMessage = `📹 Lời mời video call\n🆔 Room ID: ${roomId}\n🔗 Click để tham gia: /join-video/${roomId}`;
         await sendVideoCallInvite(inviteMessage);
+        
+        toast({
+          title: "Video call đã bắt đầu",
+          description: "Lời mời đã được gửi đến người nhận",
+          duration: 3000,
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create video call');
       }
     } catch (error) {
       console.error('Error starting video call:', error);
       toast({
         title: "Lỗi",
-        description: "Không thể bắt đầu video call",
+        description: "Không thể bắt đầu video call: " ,
         duration: 3000,
       });
     }
@@ -789,7 +832,7 @@ export default function ChatComponent() {
                           </p>
                           {conv.last_message_time && (
                             <span className="text-xs text-gray-500">
-                              {formatDate(conv.last_message_time)}
+                              {formatTime(conv.last_message_time)}
                             </span>
                           )}
                         </div>
@@ -836,7 +879,7 @@ export default function ChatComponent() {
                       </p>
                       {room.last_message_time && (
                         <span className="text-xs text-gray-500">
-                          {formatDate(room.last_message_time)}
+                          {formatTime(room.last_message_time)}
                         </span>
                       )}
                     </div>
@@ -928,13 +971,32 @@ export default function ChatComponent() {
                         ? "bg-blue-500 text-white"
                         : "bg-gray-200 text-gray-900"
                     }`}
-                  >
-                    {message.sender_id !== user?.id && (
+                  >                    {message.sender_id !== user?.id && (
                       <p className="text-xs font-medium mb-1 opacity-70">
                         {message.sender_name}
                       </p>
                     )}
                     <p className="text-sm">{message.message_content}</p>
+                    
+                    {/* Video call invitation button */}
+                    {isVideoCallMessage(message.message_content) && message.sender_id !== user?.id && (
+                      <div className="mt-2">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            const roomId = extractRoomId(message.message_content);
+                            if (roomId) {
+                              joinVideoCallFromMessage(roomId);
+                            }
+                          }}
+                          className="text-xs"
+                        >
+                          <Video className="h-3 w-3 mr-1" />
+                          Tham gia
+                        </Button>
+                      </div>
+                    )}
+                    
                     <p className={`text-xs mt-1 ${
                       message.sender_id === user?.id ? "text-blue-100" : "text-gray-500"
                     }`}>
