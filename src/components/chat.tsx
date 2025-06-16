@@ -78,15 +78,13 @@ export default function ChatComponent() {
   const [newRoomName, setNewRoomName] = useState("")
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [isConnected, setIsConnected] = useState(false)
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [soundEnabled, setSoundEnabled] = useState(true)
-  const [totalUnreadCount, setTotalUnreadCount] = useState(0)
-  const [showVideoCall, setShowVideoCall] = useState(false)
-  const [videoCallData, setVideoCallData] = useState<{
-    roomId: string;
-    authToken: string;
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);  
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  const [showVideoCall, setShowVideoCall] = useState(false);  const [videoCallData, setVideoCallData] = useState<{
+    authToken: string; // Change from roomCode to authToken
     userName: string;
-  } | null>(null)
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -523,28 +521,29 @@ export default function ChatComponent() {
     const match = content.match(/Room ID:\s*([^\n]+)/);
     return match ? match[1].trim() : null;
   };
-
   // Join video call from message
   const joinVideoCallFromMessage = async (roomId: string) => {
     if (!user) return;
     
     try {
-      // Get auth token from API
+      console.log('Joining video call with room ID:', roomId);
+        // Get auth token from API using the REAL room ID from message
       const response = await fetch('/api/video/auth-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ roomId, role: 'guest' })
+        body: JSON.stringify({ roomId, role: 'viewer' }) // Use viewer role for guest
       });
 
       if (response.ok) {
         const data = await response.json();
         setVideoCallData({
-          roomId: data.roomId,
-          authToken: data.authToken,
+          authToken: data.authToken, // Store auth token instead of room ID
           userName: data.userName
         });
         setShowVideoCall(true);
+        
+        console.log('Successfully joined video call');
       } else {
         const errorData = await response.json();
         toast({
@@ -556,59 +555,83 @@ export default function ChatComponent() {
     } catch (error) {
       console.error('Error joining video call:', error);
       toast({
-        title: "Lỗi",
-        description: "Không thể tham gia cuộc gọi",
+        title: "Lỗi",        description: "Không thể tham gia cuộc gọi",
         duration: 3000,
       });
     }
-  };// Start video call function
+  };
+
+  // Start video call function
   const startVideoCall = async () => {
     if (!selectedChat || !user) return;
     
     try {
-      // Generate simple room ID with chat info
+      // Step 1: Generate unique room name
       const timestamp = Date.now().toString().slice(-6);
-      const roomId = selectedChat.type === "user" 
+      const roomName = selectedChat.type === "user" 
         ? `chat_${user.id}_${selectedChat.id}_${timestamp}`
         : `room_${selectedChat.id}_${timestamp}`;
       
-      console.log('Generated room ID:', roomId);
+      console.log('Creating room with name:', roomName);
 
-      // Get auth token from API
-      const response = await fetch('/api/video/auth-token', {
+      // Step 2: Create room and get REAL room ID
+      const createRoomResponse = await fetch('/api/video/create-room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ roomId, role: 'host' })
+        body: JSON.stringify({ roomName })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setVideoCallData({
-          roomId: data.roomId,
-          authToken: data.authToken,
-          userName: data.userName
-        });
-        setShowVideoCall(true);
-        
-        // Send video call invitation message with join link
-        const inviteMessage = `📹 Lời mời video call\n🆔 Room ID: ${roomId}\n🔗 Click để tham gia: /join-video/${roomId}`;
-        await sendVideoCallInvite(inviteMessage);
-        
-        toast({
-          title: "Video call đã bắt đầu",
-          description: "Lời mời đã được gửi đến người nhận",
-          duration: 3000,
-        });
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create video call');
+      if (!createRoomResponse.ok) {
+        const errorData = await createRoomResponse.json();
+        throw new Error(errorData.error || 'Failed to create room');
       }
-    } catch (error) {
+
+      const roomData = await createRoomResponse.json();
+      const realRoomId = roomData.roomId; // This is the REAL room ID from 100ms
+      
+      console.log('Room created successfully:');
+      console.log('- Room name:', roomData.roomName);
+      console.log('- Real room ID:', realRoomId);      // Step 3: Generate auth token using REAL room ID
+      const authResponse = await fetch('/api/video/auth-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          roomId: realRoomId, // Use REAL room ID here!
+          role: 'broadcaster' // Use broadcaster role for host
+        })
+      });
+
+      if (!authResponse.ok) {
+        const errorData = await authResponse.json();
+        throw new Error(errorData.message || 'Failed to create auth token');
+      }
+
+      const authData = await authResponse.json();
+      
+      console.log('Auth token created successfully for room:', realRoomId);
+        // Step 4: Start video call with auth token
+      setVideoCallData({
+        authToken: authData.authToken, // Store the auth token
+        userName: authData.userName
+      });
+      setShowVideoCall(true);
+      
+      // Step 5: Send invitation message with REAL room ID
+      const inviteMessage = `📹 Lời mời video call\n🆔 Room ID: ${realRoomId}\n🔗 Link tham gia: ${window.location.origin}/join-video/${realRoomId}`;
+      await sendVideoCallInvite(inviteMessage);
+      
+      toast({
+        title: "Video call đã bắt đầu",
+        description: "Lời mời đã được gửi đến người nhận",
+        duration: 3000,
+      });
+    } catch (error: any) {
       console.error('Error starting video call:', error);
       toast({
         title: "Lỗi",
-        description: "Không thể bắt đầu video call: " ,
+        description: "Không thể bắt đầu video call: " + error.message,
         duration: 3000,
       });
     }
@@ -1042,11 +1065,9 @@ export default function ChatComponent() {
             </div>
           </div>
         )}
-      </div>      {/* Video Call Component */}
-      {showVideoCall && videoCallData && (
+      </div>      {/* Video Call Component */}      {showVideoCall && videoCallData && (
         <VideoCall
           isOpen={showVideoCall}
-          roomId={videoCallData.roomId}
           authToken={videoCallData.authToken}
           userName={videoCallData.userName}
           onClose={() => {
