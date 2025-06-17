@@ -23,15 +23,6 @@ export function Header() {
               <span>tuyensinh@utc2.edu.vn</span>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm" className="text-white hover:bg-white/10">
-              <Globe className="h-4 w-4 mr-1" />
-              Tiếng Việt
-            </Button>
-            <Button variant="outline" size="sm" className="text-white hover:bg-white/10">
-              English
-            </Button>
-          </div>
         </div>
       </div>
 
