@@ -2,31 +2,26 @@ import { useHMSActions, useHMSStore, selectIsConnectedToRoom, selectPeers, selec
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  Video, 
-  VideoOff, 
-  Mic, 
-  MicOff, 
-  PhoneOff, 
-  Monitor,
-  MonitorOff 
-} from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Monitor, MonitorOff } from 'lucide-react';
 
 interface VideoCallProps {
   isOpen: boolean;
   onClose: () => void;
-  authToken: string; // Change from roomCode to authToken
+  authToken: string;
   userName: string;
 }
 
-export default function VideoCall({ isOpen, onClose, authToken, userName }: VideoCallProps) {const hmsActions = useHMSActions();
+export default function VideoCall({ isOpen, onClose, authToken, userName }: VideoCallProps) {
+  const hmsActions = useHMSActions();
   const isConnected = useHMSStore(selectIsConnectedToRoom);
   const peers = useHMSStore(selectPeers);
   const localPeer = useHMSStore(selectLocalPeer);
   
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);  useEffect(() => {
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+
+  useEffect(() => {
     if (isOpen && authToken) {
       joinRoom();
     }
@@ -36,7 +31,8 @@ export default function VideoCall({ isOpen, onClose, authToken, userName }: Vide
         leaveRoom();
       }
     };
-  }, [isOpen, authToken]);// Sync local track states with HMS store
+  }, [isOpen, authToken]);
+
   const localVideoTrack = useHMSStore(selectVideoTrackByID(localPeer?.videoTrack));
   const localAudioTrack = useHMSStore(selectAudioTrackByID(localPeer?.audioTrack));
   
@@ -45,15 +41,15 @@ export default function VideoCall({ isOpen, onClose, authToken, userName }: Vide
       setIsVideoMuted(!localVideoTrack?.enabled);
       setIsAudioMuted(!localAudioTrack?.enabled);
     }
-  }, [isConnected, localVideoTrack, localAudioTrack]);  const joinRoom = async () => {
+  }, [isConnected, localVideoTrack, localAudioTrack]);
+
+  const joinRoom = async () => {
     try {
       console.log('Attempting to join room with auth token for user:', userName);
-      
       await hmsActions.join({
         userName,
-        authToken: authToken // Use the proper auth token
+        authToken
       });
-      
       console.log('Successfully joined room');
     } catch (error) {
       console.error('Error joining room:', error);
@@ -68,6 +64,7 @@ export default function VideoCall({ isOpen, onClose, authToken, userName }: Vide
       console.error('Error leaving room:', error);
     }
   };
+
   const toggleVideo = async () => {
     try {
       await hmsActions.setLocalVideoEnabled(isVideoMuted);
@@ -87,34 +84,38 @@ export default function VideoCall({ isOpen, onClose, authToken, userName }: Vide
   };
 
   const toggleScreenShare = async () => {
-    if (isScreenSharing) {
-      await hmsActions.setScreenShareEnabled(false);
-    } else {
-      await hmsActions.setScreenShareEnabled(true);
+    try {
+      if (isScreenSharing) {
+        await hmsActions.setScreenShareEnabled(false);
+      } else {
+        await hmsActions.setScreenShareEnabled(true);
+      }
+      setIsScreenSharing(!isScreenSharing);
+    } catch (error) {
+      console.error('Error toggling screen share:', error);
     }
-    setIsScreenSharing(!isScreenSharing);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-4xl max-h-[80vh] p-0">
-        <DialogHeader className="p-4 border-b">
-          <DialogTitle className="flex items-center justify-between">
-            <span>Video Call - {userName}</span>
-            <div className="flex items-center gap-2">
-              <span className={`text-sm ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-5xl max-h-[90vh] p-0 bg-gray-900 rounded-2xl overflow-hidden">
+        <DialogHeader className="p-4 bg-gray-800 border-b border-gray-700">
+          <DialogTitle className="flex items-center justify-between text-white">
+            <span className="text-lg font-semibold">Video Call - {userName}</span>
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-medium ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
                 {isConnected ? 'Connected' : 'Connecting...'}
               </span>
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
             </div>
           </DialogTitle>
         </DialogHeader>
 
         {/* Video Grid */}
-        <div className="flex-1 p-4 bg-gray-900 min-h-[400px]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+        <div className="p-6 bg-gray-900 min-h-[500px] flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 h-full">
             {peers.map((peer) => (
-              <div key={peer.id} className="relative bg-gray-800 rounded-lg overflow-hidden">
+              <div key={peer.id} className="relative bg-gray-800 rounded-xl overflow-hidden shadow-lg">
                 <video
                   ref={(videoElement) => {
                     if (videoElement && peer.videoTrack) {
@@ -126,17 +127,17 @@ export default function VideoCall({ isOpen, onClose, authToken, userName }: Vide
                   className="w-full h-full object-cover"
                 />
                 
-                <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
+                <div className="absolute bottom-3 left-3 bg-black bg-opacity-60 text-white px-3 py-1 rounded-lg text-sm font-medium">
                   {peer.name} {peer.isLocal && '(You)'}
                 </div>
                 
                 {!peer.videoTrack && (
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-700">
                     <div className="text-center text-white">
-                      <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-bold">
                         {peer.name.charAt(0).toUpperCase()}
                       </div>
-                      <p className="text-sm">{peer.name}</p>
+                      <p className="text-sm font-medium">{peer.name}</p>
                     </div>
                   </div>
                 )}
@@ -146,41 +147,53 @@ export default function VideoCall({ isOpen, onClose, authToken, userName }: Vide
         </div>
 
         {/* Controls */}
-        <div className="p-4 border-t bg-white flex items-center justify-center gap-4">
+        <div className="p-4 bg-gray-800 border-t border-gray-700 flex items-center justify-center gap-4">
           <Button
             variant={isAudioMuted ? "primary" : "outline"}
             size="lg"
             onClick={toggleAudio}
-            className="rounded-full p-3"
+            className={`rounded-full p-4 transition-all duration-200 ${
+              isAudioMuted 
+                ? 'bg-red-500 hover:bg-red-600 text-white' 
+                : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+            }`}
           >
-            {isAudioMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            {isAudioMuted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
           </Button>
 
           <Button
             variant={isVideoMuted ? "primary" : "outline"}
             size="lg"
             onClick={toggleVideo}
-            className="rounded-full p-3"
+            className={`rounded-full p-4 transition-all duration-200 ${
+              isVideoMuted 
+                ? 'bg-red-500 hover:bg-red-600 text-white' 
+                : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+            }`}
           >
-            {isVideoMuted ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
+            {isVideoMuted ? <VideoOff className="h-6 w-6" /> : <Video className="h-6 w-6" />}
           </Button>
 
           <Button
             variant={isScreenSharing ? "primary" : "outline"}
             size="lg"
             onClick={toggleScreenShare}
-            className="rounded-full p-3"
+            className={`rounded-full p-4 transition-all duration-200 ${
+              isScreenSharing 
+                ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+            }`}
           >
-            {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
+            {isScreenSharing ? <MonitorOff className="h-6 w-6" /> : <Monitor className="h-6 w-6" />}
           </Button>
 
           <Button
             variant="primary"
             size="lg"
             onClick={leaveRoom}
-            className="rounded-full p-3"
+            className="rounded-full p-4 bg-red-600 hover:bg-red-700 text-white transition-all duration-200"
           >
-            <PhoneOff className="h-5 w-5" />
+            <PhoneOff className="h-6 w-6" />
           </Button>
         </div>
       </DialogContent>

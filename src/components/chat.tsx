@@ -85,6 +85,13 @@ export default function ChatComponent() {
     authToken: string; // Change from roomCode to authToken
     userName: string;
   } | null>(null);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [createdRoomData, setCreatedRoomData] = useState<{
+    roomId: string;
+    authToken: string;
+    userName: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -110,7 +117,7 @@ export default function ChatComponent() {
   const initializeAudio = () => {
     // Create a simple notification sound using Web Audio API
     if (typeof window !== 'undefined') {
-      audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmYZBSuLze/PdygFKXu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dA==')
+      audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmYZBSuLze/PdygFKXu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dCwFKHu7//0IwWg7dA==')
     }
   }
 
@@ -521,18 +528,52 @@ export default function ChatComponent() {
     const match = content.match(/Room ID:\s*([^\n]+)/);
     return match ? match[1].trim() : null;
   };
+  // Extract creator ID from video call message
+  const extractCreatorId = (content: string) => {
+    const match = content.match(/Người tạo:.*\(ID:\s*([^)]+)\)/);
+    return match ? match[1].trim() : null;
+  };
+
+  // Check if current user is the creator of the video call
+  const isVideoCallCreator = (content: string) => {
+    const creatorId = extractCreatorId(content);
+    return creatorId === user?.id;
+  };
+
+  // Check if current user is the creator of a video call based on message content
+  const isCurrentUserCreator = (messageContent: string) => {
+    if (!user) return false;
+    
+    // Extract creator ID from message
+    const creatorMatch = messageContent.match(/\(ID:\s*([^)]+)\)/);
+    if (!creatorMatch) return false;
+    
+    const creatorId = creatorMatch[1].trim();
+    return creatorId === user.id;
+  };
   // Join video call from message
-  const joinVideoCallFromMessage = async (roomId: string) => {
+  const joinVideoCallFromMessage = async (roomId: string, messageContent: string) => {
     if (!user) return;
     
     try {
       console.log('Joining video call with room ID:', roomId);
-        // Get auth token from API using the REAL room ID from message
+      
+      // Check if current user is the creator to determine role
+      const isCreator = isCurrentUserCreator(messageContent);
+      const userRole = isCreator ? 'broadcaster' : 'viewer';
+      
+      console.log('User role:', userRole, 'isCreator:', isCreator);
+      
+      // Get auth token from API using the REAL room ID from message
       const response = await fetch('/api/video/auth-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ roomId, role: 'viewer' }) // Use viewer role for guest
+        body: JSON.stringify({ 
+          roomId, 
+          role: userRole,
+          isRoomCreator: isCreator // Pass creator status
+        })
       });
 
       if (response.ok) {
@@ -596,10 +637,10 @@ export default function ChatComponent() {
       const authResponse = await fetch('/api/video/auth-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ 
+        credentials: 'include',        body: JSON.stringify({ 
           roomId: realRoomId, // Use REAL room ID here!
-          role: 'broadcaster' // Use broadcaster role for host
+          role: 'broadcaster', // Use broadcaster role for host
+          isRoomCreator: true // Mark as room creator
         })
       });
 
@@ -609,18 +650,25 @@ export default function ChatComponent() {
       }
 
       const authData = await authResponse.json();
+        console.log('Auth token created successfully for room:', realRoomId);
       
-      console.log('Auth token created successfully for room:', realRoomId);
-        // Step 4: Start video call with auth token
-      setVideoCallData({
-        authToken: authData.authToken, // Store the auth token
+      // Step 4: Store room data and show invite dialog instead of auto-joining
+      setCreatedRoomData({
+        roomId: realRoomId,
+        authToken: authData.authToken,
         userName: authData.userName
       });
-      setShowVideoCall(true);
       
-      // Step 5: Send invitation message with REAL room ID
-      const inviteMessage = `📹 Lời mời video call\n🆔 Room ID: ${realRoomId}\n🔗 Link tham gia: ${window.location.origin}/join-video/${realRoomId}`;
-      await sendVideoCallInvite(inviteMessage);
+      // Set default invite message
+      const defaultMessage = `📹 Lời mời video call\n🆔 Room ID: ${realRoomId}\n👤 Người tạo: ${authData.userName} (ID: ${user.id})\n🔗 Link tham gia: ${window.location.origin}/join-video/${realRoomId}`;
+      setInviteMessage(defaultMessage);
+      setShowInviteDialog(true);
+      
+      toast({
+        title: "Phòng video call đã được tạo",
+        description: "Hãy nhập tin nhắn mời và gửi cho người tham gia",
+        duration: 3000,
+      });
       
       toast({
         title: "Video call đã bắt đầu",
@@ -651,6 +699,55 @@ export default function ChatComponent() {
       credentials: "include",
       body: JSON.stringify(body)
     });
+  };
+  // Send invite message only (without joining)
+  const sendInviteAndJoinRoom = async () => {
+    if (!createdRoomData || !selectedChat) return;
+    
+    try {
+      // Only send custom invite message
+      await sendVideoCallInvite(inviteMessage);
+      
+      toast({
+        title: "Đã gửi lời mời",
+        description: "Lời mời video call đã được gửi thành công",
+        duration: 3000,
+      });
+      
+      // Clear the message after sending
+      setInviteMessage("");
+    } catch (error) {      console.error('Error sending invite:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể gửi lời mời",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Join room without sending invite (for room creator)
+  const joinCreatedRoom = () => {
+    if (!createdRoomData) return;
+    
+    setVideoCallData({
+      authToken: createdRoomData.authToken,
+      userName: createdRoomData.userName
+    });
+    setShowVideoCall(true);
+    setShowInviteDialog(false);
+    
+    toast({
+      title: "Đã tham gia phòng",
+      description: "Bạn đã vào phòng video call",
+      duration: 3000,
+    });
+  };
+
+  // Close invite dialog
+  const closeInviteDialog = () => {
+    setShowInviteDialog(false);
+    setCreatedRoomData(null);
+    setInviteMessage("");
   };
 
   return (
@@ -1005,11 +1102,10 @@ export default function ChatComponent() {
                     {isVideoCallMessage(message.message_content) && message.sender_id !== user?.id && (
                       <div className="mt-2">
                         <Button
-                          size="sm"
-                          onClick={() => {
+                          size="sm"                          onClick={() => {
                             const roomId = extractRoomId(message.message_content);
                             if (roomId) {
-                              joinVideoCallFromMessage(roomId);
+                              joinVideoCallFromMessage(roomId, message.message_content);
                             }
                           }}
                           className="text-xs"
@@ -1075,7 +1171,49 @@ export default function ChatComponent() {
             setVideoCallData(null);
           }}
         />
-      )}
+      )}      {/* Invite Dialog */}
+      <Dialog open={showInviteDialog} onOpenChange={closeInviteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Phòng video call đã được tạo!</DialogTitle>
+          </DialogHeader>          <div className="space-y-4">
+            {/* Main action - Join room */}
+            <div className="text-center">
+              <Button onClick={joinCreatedRoom} className="w-full" size="lg">
+                <Video className="h-5 w-5 mr-2" />
+                Tham gia phòng ngay
+              </Button>
+            </div>
+            
+            {/* Optional - Send invite */}
+            <div className="border-t pt-4">
+              <Label htmlFor="inviteMessage" className="text-sm text-gray-600">
+                Gửi lời mời cho người khác (tùy chọn)
+              </Label>
+              <textarea
+                id="inviteMessage"
+                value={inviteMessage}
+                onChange={(e) => setInviteMessage(e.target.value)}
+                placeholder="Nhập tin nhắn mời để gửi cho người khác..."
+                className="w-full p-2 border rounded-md resize-none mt-2"
+                rows={3}
+              />
+              <Button 
+                onClick={sendInviteAndJoinRoom} 
+                variant="outline" 
+                className="w-full mt-2"
+                disabled={!inviteMessage.trim()}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Gửi lời mời
+              </Button>
+            </div>
+              <Button variant="outline" onClick={closeInviteDialog} className="w-full">
+              Đóng
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
