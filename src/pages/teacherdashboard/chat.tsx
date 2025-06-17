@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/router"
+import { useRouter } from "next/navigation"
 import { useAuth } from "../../../hooks/use-auth"
 import { TeacherLayout } from "@/components/teacher-layout"
 import ChatComponent from "@/components/chat"

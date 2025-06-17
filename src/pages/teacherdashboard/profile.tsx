@@ -3,8 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/router"
-import axios from "axios"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button2"
 import { Input } from "@/components/ui/input"
@@ -56,20 +55,26 @@ export default function TeacherProfile() {
     }
   }, [user])
 
-  const fetchUserProfile = async () => {
-    try {
+  const fetchUserProfile = async () => {    try {
       setLoadingProfile(true)
-      const response = await axios.get("/api/teacher/profile")
-      setProfile(response.data as UserProfile)
-      setEditedProfile(response.data as UserProfile)
-      setLoadingProfile(false)
+      const response = await fetch("/api/teacher/profile", {
+        credentials: "include"
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setProfile(data as UserProfile)
+        setEditedProfile(data as UserProfile)
+      } else {
+        throw new Error("Failed to fetch profile")
+      }
     } catch (error) {
       console.error("Error fetching user profile:", error)
       toast({
         title: "Lỗi",
-        description: "Không thể tải thông tin cá nhân",
-        variant: "destructive",
+        description: "Không thể tải thông tin cá nhân",        variant: "destructive",
       })
+    } finally {
       setLoadingProfile(false)
     }
   }
@@ -101,7 +106,18 @@ export default function TeacherProfile() {
         }
       }
 
-      await axios.put("/api/teacher/profile", changedFields)
+      const response = await fetch("/api/teacher/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(changedFields),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update profile")
+      }
 
       toast({
         title: "Thành công",
@@ -138,17 +154,30 @@ export default function TeacherProfile() {
       interface PasswordChangeResponse {
         message?: string
         [key: string]: any
+      }      const response = await fetch("/api/teacher/profile/password", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          currentPassword: passwordFields.currentPassword,
+          newPassword: passwordFields.newPassword,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast({
+          title: "Thành công",
+          description: data?.message || "Đổi mật khẩu thành công!",
+        })
+        setShowPasswordDialog(false)
+        setPasswordFields({ currentPassword: "", newPassword: "", confirmPassword: "" })
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to change password")
       }
-      const res = await axios.put<PasswordChangeResponse>("/api/teacher/profile/password", {
-        currentPassword: passwordFields.currentPassword,
-        newPassword: passwordFields.newPassword,
-      })
-      toast({
-        title: "Thành công",
-        description: res.data?.message || "Đổi mật khẩu thành công!",
-      })
-      setShowPasswordDialog(false)
-      setPasswordFields({ currentPassword: "", newPassword: "", confirmPassword: "" })
     } catch (error: any) {
       toast({
         title: "Lỗi",

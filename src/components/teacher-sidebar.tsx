@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/router"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button2"
 import { LayoutDashboard, ClipboardList, FileText, Bell, Calendar, User, LogOut, School, MessageCircle, Menu, X } from "lucide-react"
-import axios from "axios"
 
 interface TeacherSidebarProps {
   unreadNotifications?: number
@@ -19,6 +18,7 @@ export function TeacherSidebar({
   isOpen: controlledIsOpen,
   onToggle 
 }: TeacherSidebarProps) {  const router = useRouter()
+  const pathname = usePathname()
   const [internalIsOpen, setInternalIsOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -54,15 +54,26 @@ export function TeacherSidebar({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isMobile, isOpen])
-
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
-      await axios.post("/api/auth/logout")
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        throw new Error('Lỗi khi đăng xuất')
+      }
+
       router.push("/auth/login")
     } catch (error) {
-      console.error("Logout error:", error)
+      console.error('Lỗi đăng xuất:', error)
+      router.push("/auth/login")
     }
-  }
+  }, [router])
 
   const navItems = [
     {
@@ -103,23 +114,22 @@ export function TeacherSidebar({
       path: "/teacherdashboard/profile",
     },
   ]
-
   const isActive = (path: string, exact = false) => {
     if (exact) {
-      return router.pathname === path
-    }
-    return router.pathname.startsWith(path)
+      return pathname === path    }
+    return pathname.startsWith(path)
   }
-  const handleNavigation = (path: string) => {
+  
+  const handleNavigation = useCallback((path: string) => {
     router.push(path)
     if (isMobile) {
       setIsOpen(false) // Close sidebar on mobile after navigation
     }
-  }
+  }, [router, isMobile, setIsOpen])
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     setIsOpen(!isOpen)
-  }
+  }, [isOpen, setIsOpen])
 
   return (
     <>      {/* Mobile Menu Button */}

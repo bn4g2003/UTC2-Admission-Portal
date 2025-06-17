@@ -22,10 +22,8 @@ import {
   FileText,
   FolderOpen,
   BarChart3,
-  Settings,
   Home,
   LogOut,
-  User,
   ChevronRight,
   MessageCircle,
 } from "lucide-react"
@@ -71,14 +69,6 @@ export default function AppSidebar() {  const router = useRouter()
     } finally {
       setIsLoggingOut(false);
     }
-  }
-
-  const handleSettings = () => {
-    router.push("/dashboard/settings")
-  }
-
-  const handleProfile = () => {
-    router.push("/profile")
   }
 
   const isActive = (path: string) => {
@@ -161,50 +151,9 @@ export default function AppSidebar() {  const router = useRouter()
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup className="mt-8">
-          <SidebarGroupLabel className="px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Hệ thống
-          </SidebarGroupLabel>
-          <SidebarGroupContent className="mt-2">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={handleSettings}
-                  className="group w-full justify-start px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
-                      <Settings className="w-4 h-4" />
-                    </div>
-                    <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
-                      Cài đặt
-                    </span>
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter className="border-t border-slate-200 dark:border-slate-700 p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+      </SidebarContent>      <SidebarFooter className="border-t border-slate-200 dark:border-slate-700 p-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
         <SidebarMenu className="space-y-1">
           <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={handleProfile}
-              className="group w-full justify-start px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
-                  <User className="w-4 h-4" />
-                </div>
-                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
-                  Hồ sơ
-                </span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>          <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
               disabled={isLoggingOut}

@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/router"
-import axios from "axios"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button2"
 import { Badge } from "@/components/ui/badge"
@@ -47,31 +46,48 @@ export default function TeacherNotifications() {
   useEffect(() => {
     setCurrentPage(1)
   }, [activeTab])
-
   const fetchNotifications = async () => {
     try {
       setIsLoadingNotifications(true)
-      const response = await axios.get("/api/teacher/notifications")
-      setNotifications(response.data as Notification[])
-      setIsLoadingNotifications(false)
+      const response = await fetch("/api/teacher/notifications", {
+        credentials: "include"
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setNotifications(data as Notification[])
+      } else {
+        console.error("Failed to fetch notifications")
+      }
     } catch (error) {
       console.error("Error fetching notifications:", error)
+    } finally {
       setIsLoadingNotifications(false)
     }
   }
 
   const markAsRead = async (id: string) => {
     try {
-      await axios.put("/api/teacher/notifications", {
-        notificationId: id,
+      const response = await fetch("/api/teacher/notifications", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          notificationId: id,
+        }),
       })
 
-      // Update the local state to mark this notification as read
-      setNotifications(
-        notifications.map((notification) =>
-          notification.id === id ? { ...notification, is_read: true, read_at: new Date().toISOString() } : notification,
-        ),
-      )
+      if (response.ok) {        // Update the local state to mark this notification as read
+        setNotifications(
+          notifications.map((notification) =>
+            notification.id === id ? { ...notification, is_read: true, read_at: new Date().toISOString() } : notification,
+          ),
+        )
+      } else {
+        console.error("Failed to mark notification as read")
+      }
     } catch (error) {
       console.error("Error marking notification as read:", error)
     }

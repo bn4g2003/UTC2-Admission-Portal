@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/router"
-import axios from "axios"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button2"
 import { Badge } from "@/components/ui/badge"
@@ -37,15 +36,22 @@ export default function TeacherEnrollmentPlans() {
       fetchEnrollmentPlans()
     }
   }, [user])
-
   const fetchEnrollmentPlans = async () => {
     try {
       setIsLoadingPlans(true)
-      const response = await axios.get("/api/teacher/enrollment-plans")
-      setPlans(response.data as EnrollmentPlan[])
-      setIsLoadingPlans(false)
+      const response = await fetch("/api/teacher/enrollment-plans", {
+        credentials: "include"
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setPlans(data as EnrollmentPlan[])
+      } else {
+        console.error("Failed to fetch enrollment plans")
+      }
     } catch (error) {
       console.error("Error fetching enrollment plans:", error)
+    } finally {
       setIsLoadingPlans(false)
     }
   }

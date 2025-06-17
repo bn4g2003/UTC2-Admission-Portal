@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/router"
-import axios from "axios"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button2"
 import { Badge } from "@/components/ui/badge"
@@ -52,15 +51,22 @@ export default function TeacherDashboard() {
       fetchDashboardStats()
     }
   }, [user])
-
   const fetchDashboardStats = async () => {
     try {
       setIsLoadingStats(true)
-      const response = await axios.get("/api/teacher/dashboard")
-      setStats(response.data as DashboardStats)
-      setIsLoadingStats(false)
+      const response = await fetch("/api/teacher/dashboard", {
+        credentials: "include"
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data as DashboardStats)
+      } else {
+        console.error("Failed to fetch dashboard stats")
+      }
     } catch (error) {
       console.error("Error fetching dashboard stats:", error)
+    } finally {
       setIsLoadingStats(false)
     }
   }

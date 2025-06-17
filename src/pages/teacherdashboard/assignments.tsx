@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button2"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useRouter } from "next/router"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import axios from "axios"
 import { useAuth } from "../../../hooks/use-auth"
 
 type Assignment = {
@@ -47,40 +46,58 @@ export default function AssignmentsPage() {
       fetchAssignments()
     }
   }, [user, statusFilter, currentPage])
-
   const fetchAssignments = async () => {
     try {
       setIsLoadingAssignments(true)
       const url = "/api/teacher/assignments"
-      const params: Record<string, string> = {
+      const params = new URLSearchParams({
         page: String(currentPage),
         limit: String(ITEMS_PER_PAGE),
-      }
+      })
 
       if (statusFilter !== "all") {
-        params.status = statusFilter
+        params.append("status", statusFilter)
       }
 
-      console.log("Fetching assignments with params:", params)
-      const response = await axios.get(url, { params })
-      console.log("Assignments response:", response.data)
-      setAssignments(response.data as Assignment[])
-      setIsLoadingAssignments(false)
+      console.log("Fetching assignments with params:", params.toString())
+      const response = await fetch(`${url}?${params}`, {
+        credentials: "include"
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Assignments response:", data)
+        setAssignments(data as Assignment[])
+      } else {
+        console.error("Failed to fetch assignments")
+      }
     } catch (error) {
       console.error("Error fetching assignments:", error)
+    } finally {
       setIsLoadingAssignments(false)
     }
   }
 
   const handleStatusChange = async (assignmentId: string, newStatus: string) => {
     try {
-      await axios.put("/api/teacher/assignments", {
-        assignmentId,
-        newStatus,
+      const response = await fetch("/api/teacher/assignments", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          assignmentId,
+          newStatus,
+        }),
       })
 
-      // Refetch the assignments to update the list
-      fetchAssignments()
+      if (response.ok) {
+        // Refetch the assignments to update the list
+        fetchAssignments()
+      } else {
+        console.error("Failed to update assignment status")
+      }
     } catch (error) {
       console.error("Error updating assignment status:", error)
     }
