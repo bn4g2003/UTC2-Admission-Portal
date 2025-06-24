@@ -32,7 +32,7 @@ import { AdmissionSection } from "@/components2/admission-section"
 import { StatsSection } from "@/components2/stats-section"
 import { ContactSection } from "@/components2/contact-section"
 import { Footer } from "@/components2/footer"
-import { ChatbotWidget } from "@/components/chatbot"
+import ChatbotWidget  from "@/components/chatbot"
 
 export default function HomePage() {
   return (
