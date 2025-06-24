@@ -164,8 +164,8 @@ export function TeacherSidebar({
       >
       <div className="p-6 border-b">
         <div className="flex items-center gap-3">
-          <div className="bg-amber-300 p-2 rounded-lg">
-            <School className="h-6 w-6 text-amber-900" />
+          <div className="bg-amber-300 p-2 rounded-lg w-12 h-12 flex items-center justify-center overflow-hidden">
+            <img src="/images/login1.png" alt="Giáo viên" className="w-8 h-8 object-cover rounded" />
           </div>
           <div>
             <h2 className="text-xl font-bold">Giáo viên</h2>

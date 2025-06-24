@@ -44,52 +44,22 @@ export function Header() {
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center space-x-8">
               <Link 
-                href="https://tuyensinh.utc2.edu.vn/" 
+                href="/" 
                 className="text-gray-700 hover:text-[#1e3a8a] font-medium transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
               >
                 TRANG CHỦ
               </Link>
               <Link 
-                href="https://tuyensinh.utc2.edu.vn/#" 
+                href="/gioi-thieu" 
                 className="text-gray-700 hover:text-[#1e3a8a] font-medium transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
               >
                 GIỚI THIỆU
               </Link>
               <Link 
-                href="https://tuyensinh.utc2.edu.vn/vi/thong-bao-tuyen-sinh-311" 
+                href="/tuyen-sinh" 
                 className="text-gray-700 hover:text-[#1e3a8a] font-medium transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
               >
                 TUYỂN SINH
-              </Link>
-              <Link 
-                href="https://tuyensinh.utc2.edu.vn/vi/nganh-dao-tao-309" 
-                className="text-gray-700 hover:text-[#1e3a8a] font-medium transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                ĐÀO TẠO
-              </Link>
-              <Link 
-                href="https://tuyensinh.utc2.edu.vn/vi/tin-tuyen-sinh" 
-                className="text-gray-700 hover:text-[#1e3a8a] font-medium transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                SINH VIÊN
-              </Link>
-              <Link 
-                href="https://tuyensinh.utc2.edu.vn/vi/lien-he" 
-                className="text-gray-700 hover:text-[#1e3a8a] font-medium transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                LIÊN HỆ
               </Link>
             </nav>
 

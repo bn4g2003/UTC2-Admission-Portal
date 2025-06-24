@@ -32,6 +32,7 @@ export default function LoginPage() {
   const [forgotEmail, setForgotEmail] = useState("")
   const [forgotLoading, setForgotLoading] = useState(false)
   const [forgotMessage, setForgotMessage] = useState("")
+  const [loginImage, setLoginImage] = useState<string | null>(null)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,10 +65,13 @@ export default function LoginPage() {
 
       // Chuyển hướng dựa trên vai trò
       if (data.user.role === "TRUONGBAN") {
-        router.push("/dashboard"); // Sửa thành /dashboard thay vì /dashboard/truongban
+        setLoginImage("/images/login2.png");
+        router.push("/dashboard");
       } else if (data.user.role === "GIAOVIEN") {
+        setLoginImage("/images/login1.png");
         router.push("/teacherdashboard");
       } else {
+        setLoginImage(null);
         router.push("/");
       }
     } catch (err) {
@@ -106,9 +110,15 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <GraduationCap className="w-8 h-8 text-white" />
-          </div>
+          {loginImage ? (
+            <div className="flex items-center justify-center mb-4">
+              <img src={loginImage} alt="Login role" className="w-20 h-20 rounded-full object-cover border-4 border-blue-200 bg-white" />
+            </div>
+          ) : (
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+              <GraduationCap className="w-8 h-8 text-white" />
+            </div>
+          )}
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Chào mừng trở lại</h1>
           <p className="text-gray-600">Đăng nhập vào Hệ thống Tuyển sinh</p>
         </div>

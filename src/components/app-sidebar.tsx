@@ -83,8 +83,8 @@ export default function AppSidebar() {  const router = useRouter()
       <SidebarHeader className="border-b border-slate-200 dark:border-slate-700 px-6 py-6 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <BarChart3 className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg bg-white overflow-hidden">
+              <img src="/images/login2.png" alt="Trưởng Ban" className="w-10 h-10 object-cover rounded-xl" />
             </div>
             <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-slate-800"></div>
           </div>
